@@ -347,7 +347,7 @@ static esp_err_t capture_handler(httpd_req_t *req)
     bool s;
     bool detected = false;
     int face_id = 0;
-    if (!detection_enabled || fb->width > 400)
+    if (!detection_enabled /* || fb->width > 400*/)
     {
 #endif
         size_t fb_len = 0;
@@ -492,7 +492,7 @@ static esp_err_t stream_handler(httpd_req_t *req)
             fr_face = fr_start;
             fr_encode = fr_start;
             fr_recognize = fr_start;
-            if (!detection_enabled || fb->width > 400)
+            if (!detection_enabled /* || fb->width > 400*/ )
             {
 #endif
                 if (fb->format != PIXFORMAT_JPEG)
@@ -541,6 +541,7 @@ static esp_err_t stream_handler(httpd_req_t *req)
                         {
 #if CONFIG_ESP_FACE_DETECT_MTMN
                             net_boxes = face_detect(image_matrix, &mtmn_config);
+                            //ESP_LOGI(TAG, "net_boxes = %p", net_boxes);
 #endif
 
 #if CONFIG_ESP_FACE_DETECT_LSSH

@@ -780,14 +780,14 @@ document.addEventListener('DOMContentLoaded', function (event) {
 
   framesize.onchange = () => {
     updateConfig(framesize)
-    if (framesize.value > 5) {
+    if (false) {
       updateValue(detect, false)
       updateValue(recognize, false)
     }
   }
 
   detect.onchange = () => {
-    if (framesize.value > 5) {
+    if ( false ) {
       alert("Please select CIF or lower resolution before enabling this feature!");
       updateValue(detect, false)
       return;
@@ -800,7 +800,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
   }
 
   recognize.onchange = () => {
-    if (framesize.value > 5) {
+    if (false) {
       alert("Please select CIF or lower resolution before enabling this feature!");
       updateValue(recognize, false)
       return;
