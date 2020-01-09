@@ -441,17 +441,6 @@ static esp_err_t stream_handler(httpd_req_t *req)
     size_t _jpg_buf_len = 0;
     uint8_t *_jpg_buf = NULL;
     char *part_buf[64];
-#if CONFIG_ESP_FACE_DETECT_ENABLED
-    dl_matrix3du_t *image_matrix = NULL;
-    bool detected = false;
-    int face_id = 0;
-    int64_t fr_start = 0;
-    int64_t fr_ready = 0;
-    int64_t fr_face = 0;
-    int64_t fr_recognize = 0;
-    int64_t fr_encode = 0;
-#endif
-
     static int64_t last_frame = 0;
     if (!last_frame)
     {
@@ -473,11 +462,6 @@ static esp_err_t stream_handler(httpd_req_t *req)
 
     while (true)
     {
-#if CONFIG_ESP_FACE_DETECT_ENABLED
-        detected = false;
-        face_id = 0;
-#endif
-
         fb = esp_camera_fb_get();
         if (!fb)
         {
@@ -486,15 +470,6 @@ static esp_err_t stream_handler(httpd_req_t *req)
         }
         else
         {
-#if CONFIG_ESP_FACE_DETECT_ENABLED
-            fr_start = esp_timer_get_time();
-            fr_ready = fr_start;
-            fr_face = fr_start;
-            fr_encode = fr_start;
-            fr_recognize = fr_start;
-            if (!detection_enabled /* || fb->width > 400*/ )
-            {
-#endif
                 if (fb->format != PIXFORMAT_JPEG)
                 {
                     bool jpeg_converted = frame2jpg(fb, 80, &_jpg_buf, &_jpg_buf_len);
@@ -511,82 +486,6 @@ static esp_err_t stream_handler(httpd_req_t *req)
                     _jpg_buf_len = fb->len;
                     _jpg_buf = fb->buf;
                 }
-#if CONFIG_ESP_FACE_DETECT_ENABLED
-            }
-            else
-            {
-
-                image_matrix = dl_matrix3du_alloc(1, fb->width, fb->height, 3);
-
-                if (!image_matrix)
-                {
-                    ESP_LOGE(TAG, "dl_matrix3du_alloc failed");
-                    res = ESP_FAIL;
-                }
-                else
-                {
-                    if (!fmt2rgb888(fb->buf, fb->len, fb->format, image_matrix->item))
-                    {
-                        ESP_LOGE(TAG, "fmt2rgb888 failed");
-                        res = ESP_FAIL;
-                    }
-                    else
-                    {
-#if CONFIG_ESP_FACE_DETECT_LSSH
-                        // lssh_update_config(&lssh_config, min_face, image_matrix->h, image_matrix->w);
-#endif
-                        fr_ready = esp_timer_get_time();
-                        box_array_t *net_boxes = NULL;
-                        if (detection_enabled)
-                        {
-#if CONFIG_ESP_FACE_DETECT_MTMN
-                            net_boxes = face_detect(image_matrix, &mtmn_config);
-                            //ESP_LOGI(TAG, "net_boxes = %p", net_boxes);
-#endif
-
-#if CONFIG_ESP_FACE_DETECT_LSSH
-                            net_boxes = lssh_detect_object(image_matrix, lssh_config);
-#endif
-                        }
-                        fr_face = esp_timer_get_time();
-                        fr_recognize = fr_face;
-                        if (net_boxes || fb->format != PIXFORMAT_JPEG)
-                        {
-                            if (net_boxes)
-                            {
-                                detected = true;
-#if CONFIG_ESP_FACE_RECOGNITION_ENABLED
-                                if (recognition_enabled)
-                                {
-                                    face_id = run_face_recognition(image_matrix, net_boxes);
-                                }
-                                fr_recognize = esp_timer_get_time();
-#endif
-                                draw_face_boxes(image_matrix, net_boxes, face_id);
-                                dl_lib_free(net_boxes->score);
-                                dl_lib_free(net_boxes->box);
-                                if (net_boxes->landmark != NULL)
-                                    dl_lib_free(net_boxes->landmark);
-                                dl_lib_free(net_boxes);
-                            }
-                            if (!fmt2jpg(image_matrix->item, fb->width * fb->height * 3, fb->width, fb->height, PIXFORMAT_RGB888, 90, &_jpg_buf, &_jpg_buf_len))
-                            {
-                                ESP_LOGE(TAG, "fmt2jpg failed");
-                            }
-                            esp_camera_fb_return(fb);
-                            fb = NULL;
-                        }
-                        else
-                        {
-                            _jpg_buf = fb->buf;
-                            _jpg_buf_len = fb->len;
-                        }
-                        fr_encode = esp_timer_get_time();
-                    }
-                    dl_matrix3du_free(image_matrix);
-                }
-            }
-#endif
         }
         if (res == ESP_OK)
         {
@@ -618,31 +517,15 @@ static esp_err_t stream_handler(httpd_req_t *req)
         }
         int64_t fr_end = esp_timer_get_time();
 
-#if CONFIG_ESP_FACE_DETECT_ENABLED
-        int64_t ready_time = (fr_ready - fr_start) / 1000;
-        int64_t face_time = (fr_face - fr_ready) / 1000;
-        int64_t recognize_time = (fr_recognize - fr_face) / 1000;
-        int64_t encode_time = (fr_encode - fr_recognize) / 1000;
-        int64_t process_time = (fr_encode - fr_start) / 1000;
-#endif
-
         int64_t frame_time = fr_end - last_frame;
         last_frame = fr_end;
         frame_time /= 1000;
         uint32_t avg_frame_time = ra_filter_run(&ra_filter, frame_time);
         ESP_LOGI(TAG, "MJPG: %uB %ums (%.1ffps), AVG: %ums (%.1ffps)"
-#if CONFIG_ESP_FACE_DETECT_ENABLED
-                      ", %u+%u+%u+%u=%u %s%d"
-#endif
                  ,
                  (uint32_t)(_jpg_buf_len),
                  (uint32_t)frame_time, 1000.0 / (uint32_t)frame_time,
                  avg_frame_time, 1000.0 / avg_frame_time
-#if CONFIG_ESP_FACE_DETECT_ENABLED
-                 ,
-                 (uint32_t)ready_time, (uint32_t)face_time, (uint32_t)recognize_time, (uint32_t)encode_time, (uint32_t)process_time,
-                 (detected) ? "DETECTED " : "", face_id
-#endif
         );
     }
 
