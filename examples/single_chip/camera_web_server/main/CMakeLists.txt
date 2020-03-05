@@ -1,6 +1,8 @@
 set(COMPONENT_SRCS "app_main.c" "app_wifi.c" "app_camera.c" "app_httpd.c")
 set(COMPONENT_ADD_INCLUDEDIRS "include")
 
+set(EMBED_TXTFILES /work/esp/esp-who/examples/single_chip/camera_web_server/server_certs/ca_cert.pem)
+
 set(COMPONENT_REQUIRES
     esp32-camera
     esp-face

@@ -11,6 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include <stdio.h>
+#include <time.h>
+#include <errno.h>
+
 #include "app_httpd.h"
 #include "esp_http_server.h"
 #include "esp_timer.h"
@@ -19,7 +23,14 @@
 #include "fb_gfx.h"
 #include "driver/ledc.h"
 //#include "camera_index.h"
+#include "esp_system.h"
+#include "nvs_flash.h"
+#include "nvs.h"
 #include "sdkconfig.h"
+#include "esp_spiffs.h"
+#include "tcp_bsp.h"
+#include "md5.h"
+#include "common.h"
 
 #if defined(ARDUINO_ARCH_ESP32) && defined(CONFIG_ARDUHAL_ESP_LOG)
 #include "esp32-hal-log.h"
@@ -116,6 +127,7 @@ static ra_filter_t *ra_filter_init(ra_filter_t *filter, size_t sample_size)
 {
     memset(filter, 0, sizeof(ra_filter_t));
 
+    printf("file:%s, line:%d, in ra_filter_init\r\n", __FILE__, __LINE__);
     filter->values = (int *)malloc(sample_size * sizeof(int));
     if (!filter->values)
     {
@@ -129,6 +141,7 @@ static ra_filter_t *ra_filter_init(ra_filter_t *filter, size_t sample_size)
 
 static int ra_filter_run(ra_filter_t *filter, int value)
 {
+    printf("file:%s, line:%d, in ra_filter_run\r\n", __FILE__, __LINE__);
     if (!filter->values)
     {
         return value;
@@ -191,6 +204,7 @@ static void draw_face_boxes(dl_matrix3du_t *image_matrix, box_array_t *boxes, in
 {
     int x, y, w, h, i;
     uint32_t color = FACE_COLOR_YELLOW;
+    printf("file:%s, line:%d, in draw_face_boxes\r\n", __FILE__, __LINE__);
     if (face_id < 0)
     {
         color = FACE_COLOR_RED;
@@ -234,6 +248,7 @@ static int run_face_recognition(dl_matrix3du_t *image_matrix, box_array_t *net_b
     dl_matrix3du_t *aligned_face = NULL;
     int matched_id = 0;
 
+    printf("file:%s, line:%d, in run_face_recognition\r\n", __FILE__, __LINE__);
     aligned_face = dl_matrix3du_alloc(1, FACE_WIDTH, FACE_HEIGHT, 3);
     if (!aligned_face)
     {
@@ -290,6 +305,7 @@ static int run_face_recognition(dl_matrix3du_t *image_matrix, box_array_t *net_b
 void enable_led(bool en)
 { // Turn LED On or Off
     int duty = en ? led_duty : 0;
+    printf("file:%s, line:%d, in enable_led\r\n", __FILE__, __LINE__);
     if (en && isStreaming && (led_duty > CONFIG_LED_MAX_INTENSITY))
     {
         duty = CONFIG_LED_MAX_INTENSITY;
@@ -303,6 +319,7 @@ void enable_led(bool en)
 static size_t jpg_encode_stream(void *arg, size_t index, const void *data, size_t len)
 {
     jpg_chunking_t *j = (jpg_chunking_t *)arg;
+    printf("file:%s, line:%d, in jpg_encode_stream\r\n", __FILE__, __LINE__);
     if (!index)
     {
         j->len = 0;
@@ -329,6 +346,7 @@ static esp_err_t capture_handler(httpd_req_t *req)
 #else
     fb = esp_camera_fb_get();
 #endif
+    printf("file:%s, line:%d, in capture_handler\r\n", __FILE__, __LINE__);
 
     if (!fb)
     {
@@ -451,8 +469,9 @@ static esp_err_t stream_handler(httpd_req_t *req)
     int64_t fr_recognize = 0;
     int64_t fr_encode = 0;
 #endif
-
     static int64_t last_frame = 0;
+
+//    int64_t test_frame = 0;
     if (!last_frame)
     {
         last_frame = esp_timer_get_time();
@@ -471,6 +490,7 @@ static esp_err_t stream_handler(httpd_req_t *req)
     isStreaming = true;
 #endif
 
+    printf("file:%s, line:%d, begin while\r\n", __FILE__, __LINE__);
     while (true)
     {
 #if CONFIG_ESP_FACE_DETECT_ENABLED
@@ -581,12 +601,14 @@ static esp_err_t stream_handler(httpd_req_t *req)
                             _jpg_buf_len = fb->len;
                         }
                         fr_encode = esp_timer_get_time();
+                        
                     }
                     dl_matrix3du_free(image_matrix);
                 }
             }
 #endif
         }
+        
         if (res == ESP_OK)
         {
             size_t hlen = snprintf((char *)part_buf, 64, _STREAM_PART, _jpg_buf_len);
@@ -654,17 +676,81 @@ static esp_err_t stream_handler(httpd_req_t *req)
     return res;
 }
 
+/* add by liuwenjian 2020-3-4 begin */
+/* 配置设备基本信息 */
+static esp_err_t update_config(char *type, char *value)
+{
+    nvs_handle my_handle;
+    esp_err_t err;
+
+    err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK)
+    {
+        printf("file:%s, line:%d, nvs_open err = %d\r\n", __FILE__, __LINE__, err);
+        return err;
+    }
+
+    if (strlen(value) <= 0)
+    {
+        printf("file:%s, line:%d, value = %s\r\n", __FILE__, __LINE__, value);
+        nvs_close(my_handle);
+        return ESP_FAIL;
+    }
+    
+    if (0 == memcmp(type, DEVICE_ID_FLAG, strlen(DEVICE_ID_FLAG)))
+    {
+        memset(g_init_data.config_data.device_id, 0, sizeof(g_init_data.config_data.device_id));
+        strcpy(g_init_data.config_data.device_id, value);
+    }
+    else if (0 == memcmp(type, SERVICE_IP_FLAG, strlen(DEVICE_ID_FLAG)))
+    {
+        memset(g_init_data.config_data.service_ip_str, 0, sizeof(g_init_data.config_data.service_ip_str));
+        strcpy(g_init_data.config_data.service_ip_str, value);
+    }
+    else if (0 == memcmp(type, SERVICE_PORT_FLAG, strlen(SERVICE_PORT_FLAG)))
+    {
+        g_init_data.config_data.service_port = (unsigned short)atoi(value);
+    }
+    else
+    {
+        printf("file:%s, line:%d, value = %s\r\n", __FILE__, __LINE__, value);
+        nvs_close(my_handle);
+        return ESP_FAIL;
+    }
+
+    err = nvs_set_blob(my_handle, "device_info", &(g_init_data.config_data), sizeof(config_para));
+    if (err != ESP_OK)
+    {
+        nvs_close(my_handle);
+        return err;
+    }
+
+    // Commit
+    err = nvs_commit(my_handle);
+    if (err != ESP_OK)
+    {
+        nvs_close(my_handle);
+        return err;
+    }
+
+    // Close
+    nvs_close(my_handle);
+    return ESP_OK;
+}
+/* add by liuwenjian 2020-3-4 end */
+
 static esp_err_t cmd_handler(httpd_req_t *req)
 {
     char *buf;
     size_t buf_len;
-    char variable[32] = {
+    char variable[64] = {
         0,
     };
-    char value[32] = {
+    char value[64] = {
         0,
     };
 
+    printf("file:%s, line:%d, in cmd_handler\r\n", __FILE__, __LINE__);
     buf_len = httpd_req_get_url_query_len(req) + 1;
     if (buf_len > 1)
     {
@@ -702,15 +788,41 @@ static esp_err_t cmd_handler(httpd_req_t *req)
     }
 
     int val = atoi(value);
-    ESP_LOGI(TAG, "%s = %d", variable, val);
+    ESP_LOGI(TAG, "%s = %d, value = %s", variable, val, value);
     sensor_t *s = esp_camera_sensor_get();
     int res = 0;
 
     if (!strcmp(variable, "framesize"))
     {
         if (s->pixformat == PIXFORMAT_JPEG)
+        {
+            /* 设置像素 */
             res = s->set_framesize(s, (framesize_t)val);
+        }
     }
+    /* add by liuwenjian 2020-3-4 begin */
+    else if (!strcmp(variable, DEVICE_ID_FLAG))
+    {
+        /* 设备编号配置 */
+        printf("file:%s, line:%d, variable = %s, value = %s\r\n", 
+            __FILE__, __LINE__, variable, value);
+        res = update_config(DEVICE_ID_FLAG, value);
+    }
+    else if (!strcmp(variable, SERVICE_IP_FLAG))
+    {
+        /* 服务器ip 配置 */
+        printf("file:%s, line:%d, variable = %s, value = %s\r\n", 
+            __FILE__, __LINE__, variable, value);
+        res = update_config(SERVICE_IP_FLAG, value);
+    }
+    else if (!strcmp(variable, SERVICE_PORT_FLAG))
+    {
+        /* 服务器端口号配置 */
+        printf("file:%s, line:%d, variable = %s, value = %s\r\n", 
+            __FILE__, __LINE__, variable, value);
+        res = update_config(SERVICE_PORT_FLAG, value);
+    }
+    /* add by liuwenjian 2020-3-4 end */
     else if (!strcmp(variable, "quality"))
         res = s->set_quality(s, val);
     else if (!strcmp(variable, "contrast"))
@@ -850,6 +962,7 @@ static esp_err_t status_handler(httpd_req_t *req)
 #endif
     *p++ = '}';
     *p++ = 0;
+    
     httpd_resp_set_type(req, "application/json");
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
     return httpd_resp_send(req, json_response, strlen(json_response));
@@ -857,6 +970,14 @@ static esp_err_t status_handler(httpd_req_t *req)
 
 static esp_err_t index_handler(httpd_req_t *req)
 {
+//    FILE *fd;
+//    char buf[128];
+    nvs_handle my_handle;
+    esp_err_t err;
+    config_para config_data;
+
+    memset(&config_data, 0, sizeof(config_data));
+
     extern const unsigned char index_ov2640_html_gz_start[] asm("_binary_index_ov2640_html_gz_start");
     extern const unsigned char index_ov2640_html_gz_end[] asm("_binary_index_ov2640_html_gz_end");
     size_t index_ov2640_html_gz_len = index_ov2640_html_gz_end - index_ov2640_html_gz_start;
@@ -864,6 +985,34 @@ static esp_err_t index_handler(httpd_req_t *req)
     extern const unsigned char index_ov3660_html_gz_start[] asm("_binary_index_ov3660_html_gz_start");
     extern const unsigned char index_ov3660_html_gz_end[] asm("_binary_index_ov3660_html_gz_end");
     size_t index_ov3660_html_gz_len = index_ov3660_html_gz_end - index_ov3660_html_gz_start;
+
+    printf("file:%s, line:%d, in index_handler\r\n", __FILE__, __LINE__);
+
+    // Open
+    err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK)
+    {
+        printf("file:%s, line:%d, nvs_open failed!\r\n", __FILE__, __LINE__);
+    }
+    else
+    {
+        // Read run time blob
+        size_t required_size = sizeof(config_data);  // value will default to 0, if not set yet in NVS
+        // obtain required memory space to store blob being read from NVS
+        err = nvs_get_blob(my_handle, "device_info", &config_data, &required_size);
+        if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND)
+        {
+            printf("file:%s, line:%d, nvs_get_blob, err = %d\r\n", __FILE__, __LINE__, err);
+        }
+        else
+        {
+            printf("file:%s, line:%d, device_id = %s, ip = %s, port = %d\r\n", 
+                __FILE__, __LINE__, config_data.device_id, config_data.service_ip_str, config_data.service_port);
+        }
+        
+        nvs_close(my_handle);
+    }
+
 
     httpd_resp_set_type(req, "text/html");
     httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
@@ -919,7 +1068,7 @@ void app_httpd_main()
         .method = HTTP_GET,
         .handler = stream_handler,
         .user_ctx = NULL};
-
+        
     ra_filter_init(&ra_filter, 20);
 
 #if CONFIG_ESP_FACE_DETECT_ENABLED
@@ -949,6 +1098,7 @@ void app_httpd_main()
 #endif
 
 #endif
+
     ESP_LOGI(TAG, "Starting web server on port: '%d'", config.server_port);
     if (httpd_start(&camera_httpd, &config) == ESP_OK)
     {
@@ -966,3 +1116,4 @@ void app_httpd_main()
         httpd_register_uri_handler(stream_httpd, &stream_uri);
     }
 }
+

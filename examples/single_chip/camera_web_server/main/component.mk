@@ -8,3 +8,5 @@
 #
 COMPONENT_EMBED_FILES := www/index_ov2640.html.gz
 COMPONENT_EMBED_FILES += www/index_ov3660.html.gz
+
+COMPONENT_EMBED_TXTFILES :=  ${PROJECT_PATH}/server_certs/ca_cert.pem

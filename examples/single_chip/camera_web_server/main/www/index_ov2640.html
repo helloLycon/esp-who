@@ -394,6 +394,18 @@
                             <input type="range" id="saturation" min="-2" max="2" value="0" class="default-action">
                             <div class="range-max">2</div>
                         </div>
+                        <div class="input-group" id="deviceId-group">
+                        	<label for="deviceId">device id</label>
+                        	<input type="text" id="device_id" value="11111" style="height:20px;width:100px;" class="default-action">
+                        </div>
+                        <div class="input-group" id="serviceIp-group">
+                        	<label for="serviceIp">service ip</label>
+                        	<input type="text" id="service_ip" value="10.10.1.238" style="height:20px;width:100px;" class="default-action">
+                        </div>
+                        <div class="input-group" id="servicePort-group">
+                        	<label for="servicePort">service port</label>
+                        	<input type="text" id="service_port" value="10086" style="height:20px;width:100px;" class="default-action">
+                        </div>
                         <div class="input-group" id="special_effect-group">
                             <label for="special_effect">Special Effect</label>
                             <select id="special_effect" class="default-action">
@@ -632,6 +644,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
         break
       case 'range':
       case 'select-one':
+      case 'text':
         value = el.value
         break
       case 'button':
@@ -648,6 +661,15 @@ document.addEventListener('DOMContentLoaded', function (event) {
       .then(response => {
         console.log(`request to ${query} finished, status: ${response.status}`)
       })
+  }
+
+  function enterText()
+  {
+  	  //device id
+	  const device_id = document.getElementById("device_id")
+	  device_id.onchange = () => {
+	    updateConfig(device_id)
+	  }
   }
 
   document
@@ -740,6 +762,24 @@ document.addEventListener('DOMContentLoaded', function (event) {
     .forEach(el => {
       el.onchange = () => updateConfig(el)
     })
+
+  //device id
+  const device_id = document.getElementById("device_id")
+  device_id.onchange = () => {
+    updateConfig(device_id)
+  }
+
+  //service ip
+  const service_ip = document.getElementById("service_ip")
+  service_ip.onchange = () => {
+    updateConfig(service_ip)
+  }
+
+  //device id
+  const service_port = document.getElementById("service_port")
+  service_port.onchange = () => {
+    updateConfig(service_port)
+  }
 
   // Custom actions
   // Gain

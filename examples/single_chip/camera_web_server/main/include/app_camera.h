@@ -144,6 +144,20 @@
 extern "C" {
 #endif
 
+#define MD5_SIZE                16
+#define MD5_STR_LEN             (MD5_SIZE * 2)
+#define HAVE_DATA               0x01
+#define NOT_HAVE_DATA           0x00
+
+/* Õº∆¨¥Ê¥¢∂”¡– */
+typedef struct pic_queue
+{
+    struct pic_queue *next;
+    int pic_len;
+    time_t cur_time;
+    unsigned char *pic_info;
+}pic_queue;
+
 void app_camera_main();
 
 #ifdef __cplusplus
