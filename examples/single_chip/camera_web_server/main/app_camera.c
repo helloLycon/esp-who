@@ -598,12 +598,20 @@ static void recv_data_task(void *pvParameter)
 /* 队列读取图片并发送出去 */
 static void send_queue_pic_task(void *pvParameter)
 {
+    int ret;
     while (true)
     {
         if ((NULL == g_pic_queue_head) && (TRUE == g_camera_over))
         {
 //            printf("======send over========\r\n");
 //            printf("file:%s, line:%d, send over\r\n", __FILE__, __LINE__);
+            ret = send_jpeg(NULL);
+            if (CAMERA_OK != ret)
+            {
+                printf("file:%s, line:%d, send_jpeg failed! ret = %d\r\n", __FILE__, __LINE__, ret);
+                vTaskDelete(NULL);
+                return ;
+            }
             g_pic_send_over = TRUE;
             uart_write_bytes(UART_NUM_1, CAMERA_OVER, strlen(CAMERA_OVER));
         }
