@@ -298,8 +298,11 @@ void package_message(packet_info packet_data, int *package_len, unsigned char *p
 //        printf("file:%s, line:%d, jpg_data->send_count = %lu\r\n", __FILE__, __LINE__, jpg_data->send_count);
 
         /* 数据包内容 */
-        memcpy(&packet_buf[packet_len], jpg_data->buf, (packet_data.send_len - 14));
-        packet_len += (packet_data.send_len - 14);
+        if (packet_data.send_len > 14)
+        {
+            memcpy(&packet_buf[packet_len], jpg_data->buf, (packet_data.send_len - 14));
+            packet_len += (packet_data.send_len - 14);
+        }
     }
     else if (SEND_HEARTBEAT_CODE == packet_data.type)
     {
@@ -352,6 +355,7 @@ int send_data(packet_info packet_data)
     int ret;
     int len = 0;            //长度
     int send_len = 0;
+    static unsigned char is_first = TRUE;
 
     if (NULL == g_send_buf)
     {
@@ -395,12 +399,12 @@ int send_data(packet_info packet_data)
         return CAMERA_ERROR_SEND_FAILED;
     }
 
-/*    ret = recv_data();
+    ret = recv_data();
     if ((0 != ret) && (1 != ret))
     {
         printf("file:%s, line:%d, recv_data failed\r\n", __FILE__, __LINE__);
         close_socket();
-    }*/
+    }
 /*
     close_socket();
     //标记重连

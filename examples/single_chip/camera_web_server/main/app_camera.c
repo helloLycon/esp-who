@@ -57,9 +57,9 @@ static int send_jpeg(pic_queue *send_pic)
     int send_len = 0;
     int socket_fd = -1;
     unsigned long send_time;
-    int rate;
+//    int rate;
     esp_err_t sock_ret = ESP_OK;
-    struct timeval start_tv, end_tv;
+//    struct timeval start_tv, end_tv;
     static unsigned long sn = 1;
 
 //    vTaskDelay(10000);
@@ -75,107 +75,108 @@ static int send_jpeg(pic_queue *send_pic)
 
     if (ESP_OK == sock_ret)
     {
-        gettimeofday(&start_tv, NULL);
-        
-        // init md5
-        my_MD5Init(&md5);
-        
-        while (send_pic->pic_len > send_len)
+//        gettimeofday(&start_tv, NULL);
+        if (NULL != send_pic)
         {
-            if (send_pic->pic_len - send_len > 1024)
+            // init md5
+            my_MD5Init(&md5);
+            
+            while (send_pic->pic_len > send_len)
             {
-                my_MD5Update(&md5, (send_pic->pic_info + send_len), 1024);
-                jpeg_data.buf = send_pic->pic_info + send_len;
-                jpeg_data.create_time = send_pic->cur_time;
-                jpeg_data.num = sn;
-                jpeg_data.send_count = send_len;
-                packet_send_data.data = (void *)(&jpeg_data);
-                packet_send_data.send_len = 1024 + 14;
-                packet_send_data.status = HAVE_DATA;
-                packet_send_data.type = SEND_FACE_PIC_CODE;
-                
-//                printf("file:%s, line:%d, begin send_data\r\n", __FILE__, __LINE__);
-                ret = send_data(packet_send_data);
-                if (CAMERA_OK != ret)
+                if (send_pic->pic_len - send_len > 1024)
                 {
-                    printf("file:%s, line:%d, send_data failed\r\n", __FILE__, __LINE__);
-                    close_socket();
-                    return ret;
-                }
-/*                else
-                {
-//                    printf("file:%s, line:%d, begin recv_data\r\n", __FILE__, __LINE__);
-                    ret = recv_data();
-                    if (0 != ret)
+                    my_MD5Update(&md5, (send_pic->pic_info + send_len), 1024);
+                    jpeg_data.buf = send_pic->pic_info + send_len;
+                    jpeg_data.create_time = send_pic->cur_time;
+                    jpeg_data.num = sn;
+                    jpeg_data.send_count = send_len;
+                    packet_send_data.data = (void *)(&jpeg_data);
+                    packet_send_data.send_len = 1024 + 14;
+                    packet_send_data.status = HAVE_DATA;
+                    packet_send_data.type = SEND_FACE_PIC_CODE;
+                    
+    //                printf("file:%s, line:%d, begin send_data\r\n", __FILE__, __LINE__);
+                    ret = send_data(packet_send_data);
+                    if (CAMERA_OK != ret)
                     {
-                        printf("file:%s, line:%d, recv_data failed\r\n", __FILE__, __LINE__);
+                        printf("file:%s, line:%d, send_data failed\r\n", __FILE__, __LINE__);
                         close_socket();
-                        return ;
+                        return ret;
                     }
-                }*/
-                send_len += 1024;
+    /*                else
+                    {
+    //                    printf("file:%s, line:%d, begin recv_data\r\n", __FILE__, __LINE__);
+                        ret = recv_data();
+                        if (0 != ret)
+                        {
+                            printf("file:%s, line:%d, recv_data failed\r\n", __FILE__, __LINE__);
+                            close_socket();
+                            return ;
+                        }
+                    }*/
+                    send_len += 1024;
+                }
+                else
+                {
+                    my_MD5Update(&md5, (send_pic->pic_info + send_len), (send_pic->pic_len - send_len));
+                    jpeg_data.buf = send_pic->pic_info + send_len;
+                    jpeg_data.create_time = send_pic->cur_time;
+                    jpeg_data.num = sn;
+                    jpeg_data.send_count = send_len;
+                    packet_send_data.data = (void *)(&jpeg_data);
+                    packet_send_data.send_len = send_pic->pic_len - send_len + 14;
+                    packet_send_data.status = HAVE_DATA;
+                    packet_send_data.type = SEND_FACE_PIC_CODE;
+                    
+    //                printf("file:%s, line:%d, begin send_data\r\n", __FILE__, __LINE__);
+                    ret = send_data(packet_send_data);
+                    if (CAMERA_OK != ret)
+                    {
+                        printf("file:%s, line:%d, send_data failed\r\n", __FILE__, __LINE__);
+                        close_socket();
+                        return ret;
+                    }
+    /*                else
+                    {
+    //                    printf("file:%s, line:%d, begin recv_data\r\n", __FILE__, __LINE__);
+                        ret = recv_data();
+                        if (0 != ret)
+                        {
+                            printf("file:%s, line:%d, recv_data failed\r\n", __FILE__, __LINE__);
+                            close_socket();
+                            return ;
+                        }
+                    }*/
+                    send_len = send_pic->pic_len;
+                }
             }
-            else
+
+            my_MD5Final(&md5, md5_value);
+            for (i = 0; i < MD5_SIZE; i++)
             {
-                my_MD5Update(&md5, (send_pic->pic_info + send_len), (send_pic->pic_len - send_len));
-                jpeg_data.buf = send_pic->pic_info + send_len;
-                jpeg_data.create_time = send_pic->cur_time;
-                jpeg_data.num = sn;
-                jpeg_data.send_count = send_len;
-                packet_send_data.data = (void *)(&jpeg_data);
-                packet_send_data.send_len = send_pic->pic_len - send_len + 14;
-                packet_send_data.status = HAVE_DATA;
-                packet_send_data.type = SEND_FACE_PIC_CODE;
-                
-//                printf("file:%s, line:%d, begin send_data\r\n", __FILE__, __LINE__);
-                ret = send_data(packet_send_data);
-                if (CAMERA_OK != ret)
-                {
-                    printf("file:%s, line:%d, send_data failed\r\n", __FILE__, __LINE__);
-                    close_socket();
-                    return ret;
-                }
-/*                else
-                {
-//                    printf("file:%s, line:%d, begin recv_data\r\n", __FILE__, __LINE__);
-                    ret = recv_data();
-                    if (0 != ret)
-                    {
-                        printf("file:%s, line:%d, recv_data failed\r\n", __FILE__, __LINE__);
-                        close_socket();
-                        return ;
-                    }
-                }*/
-                send_len = send_pic->pic_len;
+                snprintf((md5_str + i * 2), (2 + 1), "%02x", md5_value[i]);
             }
-        }
+            md5_str[MD5_STR_LEN] = '\0'; // add end
+            
+    //        packet_send_data.buf = buf + send_len;
+            jpeg_data.buf = (unsigned char *)md5_str;
+            jpeg_data.create_time = send_pic->cur_time;
+            jpeg_data.num = sn;
+            sn++;
+            jpeg_data.send_count = send_len;
+            packet_send_data.data = (void *)(&jpeg_data);
+            packet_send_data.send_len = MD5_STR_LEN + 14;
+            packet_send_data.status = NOT_HAVE_DATA;
+            packet_send_data.type = SEND_FACE_PIC_CODE;
 
-        my_MD5Final(&md5, md5_value);
-        for (i = 0; i < MD5_SIZE; i++)
-        {
-            snprintf((md5_str + i * 2), (2 + 1), "%02x", md5_value[i]);
-        }
-        md5_str[MD5_STR_LEN] = '\0'; // add end
-        
-//        packet_send_data.buf = buf + send_len;
-        jpeg_data.buf = (unsigned char *)md5_str;
-        jpeg_data.create_time = send_pic->cur_time;
-        jpeg_data.num = sn;
-        sn++;
-        jpeg_data.send_count = send_len;
-        packet_send_data.data = (void *)(&jpeg_data);
-        packet_send_data.send_len = MD5_STR_LEN + 14;
-        packet_send_data.status = NOT_HAVE_DATA;
-        packet_send_data.type = SEND_FACE_PIC_CODE;
-
-//        printf("file:%s, line:%d, md5_str = %s\r\n", __FILE__, __LINE__, md5_str);
-        ret = send_data(packet_send_data);
-        if (CAMERA_OK != ret)
-        {
-            printf("file:%s, line:%d, send_data failed\r\n", __FILE__, __LINE__);
-            close_socket();
-            return ret;
-        }
+    //        printf("file:%s, line:%d, md5_str = %s\r\n", __FILE__, __LINE__, md5_str);
+            ret = send_data(packet_send_data);
+            if (CAMERA_OK != ret)
+            {
+                printf("file:%s, line:%d, send_data failed\r\n", __FILE__, __LINE__);
+                close_socket();
+                return ret;
+            }
 /*        else
         {
 //            printf("file:%s, line:%d, begin recv_data\r\n", __FILE__, __LINE__);
@@ -188,12 +189,32 @@ static int send_jpeg(pic_queue *send_pic)
             }
         }*/
         
-        gettimeofday(&end_tv, NULL);
+/*        gettimeofday(&end_tv, NULL);
         send_time = (end_tv.tv_sec - start_tv.tv_sec) * 1000000 + (end_tv.tv_usec - start_tv.tv_usec);
-        rate = send_pic->pic_len * 1000 / send_time;
+        rate = send_pic->pic_len * 1000 / send_time;*/
 //        printf("file:%s, line:%d, len = %d, send_time = %lu, rate = %d, time = %ld\r\n", 
 //            __FILE__, __LINE__, len, send_time, rate, end_tv.tv_sec);
-
+        }
+        else
+        {
+            jpeg_data.buf = NULL;
+            jpeg_data.create_time = 0;
+            jpeg_data.num = 0xffff;
+            jpeg_data.send_count = 0;
+            packet_send_data.data = (void *)(&jpeg_data);
+            packet_send_data.send_len = 14;
+            packet_send_data.status = NOT_HAVE_DATA;
+            packet_send_data.type = SEND_FACE_PIC_CODE;
+            
+//                printf("file:%s, line:%d, begin send_data\r\n", __FILE__, __LINE__);
+            ret = send_data(packet_send_data);
+            if (CAMERA_OK != ret)
+            {
+                printf("file:%s, line:%d, send_data failed\r\n", __FILE__, __LINE__);
+                close_socket();
+                return ret;
+            }
+        }
     }
     else
     {
@@ -311,6 +332,7 @@ void send_heartbeat_packet()
 
     if (ESP_OK == sock_ret)
     {
+        printf("file:%s, line:%d, begin send_data\r\n", __FILE__, __LINE__);
         ret = send_data(packet_send_data);
         if (CAMERA_OK != ret)
         {
@@ -341,7 +363,7 @@ static esp_err_t stream_send()
     int64_t fr_recognize = 0;
     int64_t fr_encode = 0;
 #endif
-//    printf("file:%s, line:%d, begin esp_wait_sntp_sync\r\n", __FILE__, __LINE__);
+    printf("file:%s, line:%d, begin esp_wait_sntp_sync\r\n", __FILE__, __LINE__);
     /* add by liuwenjian 2020-3-4 begin */
     /* 用于时间同步 */
     esp_wait_sntp_sync();
