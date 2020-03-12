@@ -148,7 +148,7 @@ esp_err_t pcf8563RtcWrite(i2c_port_t i2c_num, const RtcStruct *rtcValue)
  */
 static esp_err_t i2c_master_init()
 {
-    int i2c_master_port = I2C_MASTER_NUM;
+    int i2c_master_port = I2C_RTC_MASTER_NUM;
     i2c_config_t conf;
     conf.mode = I2C_MODE_MASTER;
     conf.sda_io_num = I2C_MASTER_SDA_IO;
@@ -194,7 +194,7 @@ static void i2c_test_task(void *arg)
         .tm_year = 2019-1900,
     };
 
-    ret = pcf8563RtcWrite(I2C_MASTER_NUM, &rtcTime);
+    ret = pcf8563RtcWrite(I2C_RTC_MASTER_NUM, &rtcTime);
     if (ret == ESP_ERR_TIMEOUT) {
         ESP_LOGE(TAG, "I2C Timeout");
     } else if (ret == ESP_OK) {
@@ -205,7 +205,7 @@ static void i2c_test_task(void *arg)
     
     while (1) {
         ESP_LOGI(TAG, "TASK[%d] test cnt: %d", task_idx, cnt++);
-        ret = pcf8563RtcRead(I2C_MASTER_NUM, regData);
+        ret = pcf8563RtcRead(I2C_RTC_MASTER_NUM, regData);
         if (ret == ESP_ERR_TIMEOUT) {
             ESP_LOGE(TAG, "I2C Timeout");
         } else if (ret == ESP_OK) {

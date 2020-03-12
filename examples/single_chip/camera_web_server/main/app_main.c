@@ -38,6 +38,7 @@
 #include "nvs_flash.h"
 #include "nvs.h"
 #include "common.h"
+#include "i2c_example_main.h"
 
 #define ECHO_TEST_TXD   (GPIO_NUM_4)
 #define ECHO_TEST_RXD   (GPIO_NUM_5)
@@ -184,6 +185,7 @@ void app_main()
         err = nvs_flash_init();
     }
 
+    i2c_app_init();
     /* add by liuwenjian 2020-3-4 begin */
     /* 设备信息初始化 */
     init_para();

@@ -39,6 +39,7 @@
 #include "esp_system.h"
 #include "common.h"
 #include "camera_error.h"
+#include "i2c_example_main.h"
 
 static const char *TAG = "app_camera";
 /* add by liuwenjian 2020-3-4 begin */
@@ -346,6 +347,10 @@ void send_heartbeat_packet()
 
 static esp_err_t stream_send()
 {
+    char timeStr[32];
+    uint8_t reg[8];
+    time_t timeValue;
+    struct tm tmValue, rtcValue;
     camera_fb_t *fb = NULL;
     esp_err_t res = ESP_OK;
     size_t _jpg_buf_len = 0;
@@ -367,7 +372,13 @@ static esp_err_t stream_send()
     /* add by liuwenjian 2020-3-4 begin */
     /* 用于时间同步 */
     esp_wait_sntp_sync();
-    printf("file:%s, line:%d, time = %ld\r\n", __FILE__, __LINE__, time(NULL));
+    time(&timeValue);
+    localtime_r(&timeValue, &tmValue);
+    pcf8563RtcRead(I2C_RTC_MASTER_NUM, reg);
+    pcf8563RtcToString(reg, timeStr);
+    printf("==> rtc: %s\r\n", timeStr);
+    pcf8563RtcWrite(I2C_RTC_MASTER_NUM, &tmValue);
+    printf("file:%s, line:%d, ---->(%d-%02d-%02d %02d:%02d:%02d)\r\n", __FILE__, __LINE__, tmValue.tm_year+1900, tmValue.tm_mon+1, tmValue.tm_mday, tmValue.tm_hour, tmValue.tm_min, tmValue.tm_sec);
 
 //    int64_t test_frame = 0;
     g_init_data.start_time = time(NULL);
