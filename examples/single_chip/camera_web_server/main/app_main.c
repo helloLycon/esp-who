@@ -40,11 +40,11 @@
 #include "common.h"
 #include "i2c_example_main.h"
 
-#define ECHO_TEST_TXD   (GPIO_NUM_4)
-#define ECHO_TEST_RXD   (GPIO_NUM_5)
+#define ECHO_TEST_TXD   (GPIO_NUM_1)
+#define ECHO_TEST_RXD   (GPIO_NUM_3)
 #define ECHO_TEST_RTS   (UART_PIN_NO_CHANGE)
 #define ECHO_TEST_CTS   (UART_PIN_NO_CHANGE)
-#define BUF_SIZE        (1024)
+#define BUF_SIZE        (256)
 
 unsigned char g_camera_over = FALSE;
 unsigned char g_pic_send_over = FALSE;
@@ -115,24 +115,21 @@ static void echo_task(void *arg)
         .stop_bits = UART_STOP_BITS_1,
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
     };
-    printf("in echo_task\r\n");
-    uart_param_config(UART_NUM_1, &uart_config);
-    uart_set_pin(UART_NUM_1, ECHO_TEST_TXD, ECHO_TEST_RXD, ECHO_TEST_RTS, ECHO_TEST_CTS);
-    uart_driver_install(UART_NUM_1, BUF_SIZE * 2, 0, 0, NULL, 0);
+    uart_param_config(ECHO_UART_NUM, &uart_config);
+    uart_set_pin(ECHO_UART_NUM, ECHO_TEST_TXD, ECHO_TEST_RXD, ECHO_TEST_RTS, ECHO_TEST_CTS);
+    uart_driver_install(ECHO_UART_NUM, BUF_SIZE * 2, 0, 0, NULL, 0);
 
     // Configure a temporary buffer for the incoming data
     uint8_t *data = (uint8_t *) malloc(BUF_SIZE);
 
-    printf("begin while(1)\r\n");
     while (1)
     {
         // Read data from the UART
-        int len = uart_read_bytes(UART_NUM_1, data, BUF_SIZE, 20 / portTICK_RATE_MS);
-        if ((len > 0) && (0 == memcmp(CAMERA_STOP, data, strlen(CAMERA_STOP))))
-        {
-            // Write data back to the UART
-            uart_write_bytes(UART_NUM_1, CAMERA_OVER, strlen(CAMERA_OVER));
+        int len = uart_read_bytes(ECHO_UART_NUM, data, BUF_SIZE, 200 / portTICK_RATE_MS);
+        if(len <= 0) {
+            continue;
         }
+        printf("len = %d\n", len);
     }
 
     vTaskDelete(NULL);
@@ -214,7 +211,7 @@ void app_main()
 
     /* add by liuwenjian 2020-3-4 begin */
     /* 创建任务接收系统消息 */
-    xTaskCreate(echo_task, "uart_echo_task", 1024, NULL, 10, NULL);
+    xTaskCreate(echo_task, "uart_echo_task", 1024*2, NULL, 10, NULL);
 
     /* 等待摄像图片传送结束 */
     while ((FALSE == g_pic_send_over) || (count < 20))

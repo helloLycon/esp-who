@@ -10,6 +10,9 @@
 #define CAMERA_STOP         "airbat\tpass\r\n"
 #define STORAGE_NAMESPACE   "storage"
 
+#define ECHO_UART_NUM   (UART_NUM_0)
+
+
 #define TCP_PORT            10086               //统一的端口号，包括TCP客户端或者服务端
 #define CAMERA_VIDEO_TIME   12
 
