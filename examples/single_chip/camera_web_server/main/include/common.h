@@ -13,6 +13,14 @@
 #define ECHO_UART_NUM   (UART_NUM_0)
 
 
+/*核心板命令码*/
+#define CORE_SHUT_DOWN_REQ   "~shutdown_coreboard_request"  //核心板发出关机请求
+#define CORE_SHUT_DOWN       "~shutdown_coreboard_cmd"      //主控mcu发出关机命令
+#define CORE_SHUT_DOWN_OK    "~coreboard_shutdown_ok"       //核心板关机完成
+#define IR_WKUP_PIN_RISING   "~ir_wkup_pin_up"              //唤醒脚上升沿，有人移动
+#define IR_WKUP_PIN_FALLING  "~ir_wkup_pin_down"            //唤醒脚下降沿，没人移动
+
+
 #define TCP_PORT            10086               //统一的端口号，包括TCP客户端或者服务端
 #define CAMERA_VIDEO_TIME   12
 

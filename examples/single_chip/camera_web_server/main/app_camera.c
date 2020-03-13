@@ -624,7 +624,7 @@ static void send_queue_pic_task(void *pvParameter)
                 return ;
             }
             g_pic_send_over = TRUE;
-            uart_write_bytes(ECHO_UART_NUM, CAMERA_OVER, strlen(CAMERA_OVER));
+            uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ));
         }
         else if (NULL != g_pic_queue_head)
         {

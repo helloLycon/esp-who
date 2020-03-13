@@ -106,6 +106,7 @@ void init_para()
 
 static void echo_task(void *arg)
 {
+    TickType_t fallingTickCount = 0;
     /* Configure parameters of an UART driver,
      * communication pins and install the driver */
     uart_config_t uart_config = {
@@ -120,16 +121,42 @@ static void echo_task(void *arg)
     uart_driver_install(ECHO_UART_NUM, BUF_SIZE * 2, 0, 0, NULL, 0);
 
     // Configure a temporary buffer for the incoming data
-    uint8_t *data = (uint8_t *) malloc(BUF_SIZE);
+    char *data = (char *) malloc(BUF_SIZE);
 
     while (1)
     {
         // Read data from the UART
-        int len = uart_read_bytes(ECHO_UART_NUM, data, BUF_SIZE, 200 / portTICK_RATE_MS);
-        if(len <= 0) {
+        int len = uart_read_bytes(ECHO_UART_NUM, (uint8_t *)data, BUF_SIZE, 200 / portTICK_RATE_MS);
+
+        /* 观察是否超时(无人) */
+        if( fallingTickCount && ( (xTaskGetTickCount() - fallingTickCount) > (3*configTICK_RATE_HZ))) {
+            printf("=> falling edge time out\n");
+        }
+        
+        //printf("%d\n", xTaskGetTickCount());
+        if((len <= 0) || (data[0] != '~')) {
             continue;
         }
         printf("len = %d\n", len);
+        data[len] = '\0';
+        if( strstr(data, CORE_SHUT_DOWN) ) {
+            printf("file:%s, line:%d, begin esp_deep_sleep_start\n", 
+                __FILE__, __LINE__);
+            /* 进入深度休眠 */
+            uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_OK, strlen(CORE_SHUT_DOWN_OK));
+            esp_deep_sleep_start();
+        }
+        else if( strstr(data, IR_WKUP_PIN_FALLING) ) {
+            /* 上次是下降沿的话不用更新 */
+            if( 0 == fallingTickCount) {
+                fallingTickCount = xTaskGetTickCount();
+            }
+            printf("=> falling edge\n");
+        }
+        else if( strstr(data, IR_WKUP_PIN_RISING) ) {
+            fallingTickCount = 0;
+            printf("=> rising edge\n");
+        }
     }
 
     vTaskDelete(NULL);
@@ -247,6 +274,7 @@ void app_main()
     printf("file:%s, line:%d, begin esp_deep_sleep_start\n", 
         __FILE__, __LINE__);
     /* 进入深度休眠 */
+    uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_OK, strlen(CORE_SHUT_DOWN_OK));
     esp_deep_sleep_start();
     /* add by liuwenjian 2020-3-4 end */
 
