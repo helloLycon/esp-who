@@ -237,6 +237,10 @@ void pic_out_queue()
         return ;
     }
 
+    if(cameraEndFlag) {
+        goto skip_send;
+    }
+
     printf("file:%s, line:%d, send_pic = %p, next = %p, len = %d\r\n", 
         __FILE__, __LINE__, send_pic, send_pic->next, send_pic->pic_len);
     ret = send_jpeg(send_pic);
@@ -246,6 +250,7 @@ void pic_out_queue()
         return ;
     }
 
+skip_send:
     g_pic_queue_head = g_pic_queue_head->next;
     if (NULL == g_pic_queue_head)
     {
@@ -612,7 +617,7 @@ static void send_queue_pic_task(void *pvParameter)
     int ret;
     while (true)
     {
-        if ((NULL == g_pic_queue_head) && (TRUE == g_camera_over))
+        if (cameraEndFlag || ((NULL == g_pic_queue_head)&&(TRUE == g_camera_over)) )
         {
 //            printf("======send over========\r\n");
 //            printf("file:%s, line:%d, send over\r\n", __FILE__, __LINE__);

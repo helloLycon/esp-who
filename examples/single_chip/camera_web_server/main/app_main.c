@@ -51,6 +51,8 @@ unsigned char g_pic_send_over = FALSE;
 unsigned char g_update_flag = FALSE;
 init_info g_init_data;
 
+bool cameraEndFlag = 0;
+
 /* add by liuwenjian 2020-3-4 begin */
 void init_para()
 {
@@ -131,6 +133,7 @@ static void echo_task(void *arg)
         /* 观察是否超时(无人) */
         if( fallingTickCount && ( (xTaskGetTickCount() - fallingTickCount) > (3*configTICK_RATE_HZ))) {
             printf("=> falling edge time out\n");
+            cameraEndFlag = true;
         }
         
         //printf("%d\n", xTaskGetTickCount());
