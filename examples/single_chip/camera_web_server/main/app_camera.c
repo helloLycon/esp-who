@@ -619,7 +619,6 @@ static void send_queue_pic_task(void *pvParameter)
     {
         if (cameraEndFlag || ((NULL == g_pic_queue_head)&&(TRUE == g_camera_over)) )
         {
-//            printf("======send over========\r\n");
 //            printf("file:%s, line:%d, send over\r\n", __FILE__, __LINE__);
             ret = send_jpeg(NULL);
             if (CAMERA_OK != ret)
@@ -628,8 +627,11 @@ static void send_queue_pic_task(void *pvParameter)
                 vTaskDelete(NULL);
                 return ;
             }
+            /* send over: okay */
+            printf("======send over========\r\n");
             g_pic_send_over = TRUE;
             uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ));
+            break;
         }
         else if (NULL != g_pic_queue_head)
         {

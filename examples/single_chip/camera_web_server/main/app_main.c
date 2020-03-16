@@ -101,7 +101,8 @@ void init_para()
     {
         strcpy(g_init_data.config_data.device_id, DEVICE_INFO);
     }
-
+    printf("file:%s, line:%d, device_id = %s\r\n", 
+        __FILE__, __LINE__, g_init_data.config_data.device_id);
     nvs_close(my_handle);
     return ;
 }
