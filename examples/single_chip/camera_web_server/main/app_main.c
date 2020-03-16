@@ -161,6 +161,10 @@ static void echo_task(void *arg)
             fallingTickCount = 0;
             printf("=> rising edge\n");
         }
+        else if( strstr(data, WAKE_UP_FROM_KEY) ) {
+            fallingTickCount = 0;
+            printf("=> wake up from key\n");
+        }
     }
 
     vTaskDelete(NULL);
