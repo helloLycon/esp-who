@@ -129,7 +129,7 @@ static void echo_task(void *arg)
     while (1)
     {
         // Read data from the UART
-        int len = uart_read_bytes(ECHO_UART_NUM, (uint8_t *)data, BUF_SIZE, 200 / portTICK_RATE_MS);
+        int len = uart_read_bytes(ECHO_UART_NUM, (uint8_t *)data, BUF_SIZE, 20 / portTICK_RATE_MS);
 
         /* 观察是否超时(无人) */
         if( fallingTickCount && ( (xTaskGetTickCount() - fallingTickCount) > (3*configTICK_RATE_HZ))) {
