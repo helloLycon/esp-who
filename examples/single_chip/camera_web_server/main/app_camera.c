@@ -97,7 +97,7 @@ static int send_jpeg(pic_queue *send_pic)
                     packet_send_data.type = SEND_FACE_PIC_CODE;
                     
     //                printf("file:%s, line:%d, begin send_data\r\n", __FILE__, __LINE__);
-                    ret = send_data(packet_send_data);
+                    ret = send_data(packet_send_data, true);
                     if (CAMERA_OK != ret)
                     {
                         printf("file:%s, line:%d, send_data failed\r\n", __FILE__, __LINE__);
@@ -130,7 +130,7 @@ static int send_jpeg(pic_queue *send_pic)
                     packet_send_data.type = SEND_FACE_PIC_CODE;
                     
     //                printf("file:%s, line:%d, begin send_data\r\n", __FILE__, __LINE__);
-                    ret = send_data(packet_send_data);
+                    ret = send_data(packet_send_data, true);
                     if (CAMERA_OK != ret)
                     {
                         printf("file:%s, line:%d, send_data failed\r\n", __FILE__, __LINE__);
@@ -171,7 +171,7 @@ static int send_jpeg(pic_queue *send_pic)
             packet_send_data.type = SEND_FACE_PIC_CODE;
 
     //        printf("file:%s, line:%d, md5_str = %s\r\n", __FILE__, __LINE__, md5_str);
-            ret = send_data(packet_send_data);
+            ret = send_data(packet_send_data, true);
             if (CAMERA_OK != ret)
             {
                 printf("file:%s, line:%d, send_data failed\r\n", __FILE__, __LINE__);
@@ -208,7 +208,7 @@ static int send_jpeg(pic_queue *send_pic)
             packet_send_data.type = SEND_FACE_PIC_CODE;
             
 //                printf("file:%s, line:%d, begin send_data\r\n", __FILE__, __LINE__);
-            ret = send_data(packet_send_data);
+            ret = send_data(packet_send_data, true);
             if (CAMERA_OK != ret)
             {
                 printf("file:%s, line:%d, send_data failed\r\n", __FILE__, __LINE__);
@@ -339,7 +339,7 @@ void send_heartbeat_packet()
     if (ESP_OK == sock_ret)
     {
         printf("file:%s, line:%d, begin send_data\r\n", __FILE__, __LINE__);
-        ret = send_data(packet_send_data);
+        ret = send_data(packet_send_data, false);
         if (CAMERA_OK != ret)
         {
             printf("file:%s, line:%d, send_data failed ret = %d\r\n", 

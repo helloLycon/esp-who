@@ -350,7 +350,7 @@ void package_message(packet_info packet_data, int *package_len, unsigned char *p
 *               Ver0.0.1:
                     hx-zsj, 2020/01/07, 初始化版本\n 
 */
-int send_data(packet_info packet_data)
+int send_data(packet_info packet_data, bool recv_needed)
 {
     int ret;
     int len = 0;            //长度
@@ -399,12 +399,16 @@ int send_data(packet_info packet_data)
         return CAMERA_ERROR_SEND_FAILED;
     }
 
+    if( !recv_needed ) {
+        goto skip_recv;
+    }
     ret = recv_data();
     if ((0 != ret) && (1 != ret))
     {
         printf("file:%s, line:%d, recv_data failed\r\n", __FILE__, __LINE__);
         close_socket();
     }
+skip_recv:
 /*
     close_socket();
     //标记重连
