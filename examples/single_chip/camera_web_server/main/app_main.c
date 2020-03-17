@@ -52,6 +52,7 @@ unsigned char g_update_flag = FALSE;
 init_info g_init_data;
 
 bool cameraEndFlag = 0;
+int max_sleep_uptime = 20;
 
 /* add by liuwenjian 2020-3-4 begin */
 void init_para()
@@ -162,8 +163,8 @@ static void echo_task(void *arg)
             printf("=> rising edge\n");
         }
         else if( strstr(data, WAKE_UP_FROM_KEY) ) {
-            fallingTickCount = 0;
             printf("=> wake up from key\n");
+            max_sleep_uptime = 60;
         }
     }
 
@@ -249,11 +250,12 @@ void app_main()
     xTaskCreate(echo_task, "uart_echo_task", 1024*2, NULL, 10, NULL);
 
     /* 等待摄像图片传送结束 */
-    while ((FALSE == g_pic_send_over) || (count < 20))
+    while (count < max_sleep_uptime)
     {
         count++;
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
+    /* exceed max uptime, timeout */
 
     /* 等待升级结束 */
     while (TRUE == g_update_flag)
