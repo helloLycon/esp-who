@@ -148,7 +148,7 @@ static void echo_task(void *arg)
             printf("file:%s, line:%d, begin esp_deep_sleep_start\n", 
                 __FILE__, __LINE__);
             /* 进入深度休眠 */
-            uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_OK, strlen(CORE_SHUT_DOWN_OK));
+            uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_OK, strlen(CORE_SHUT_DOWN_OK)+1);
             esp_deep_sleep_start();
         }
         else if( strstr(data, IR_WKUP_PIN_FALLING) ) {
@@ -284,7 +284,7 @@ void app_main()
     printf("file:%s, line:%d, begin esp_deep_sleep_start\n", 
         __FILE__, __LINE__);
     /* 进入深度休眠 */
-    uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_OK, strlen(CORE_SHUT_DOWN_OK));
+    uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_OK, strlen(CORE_SHUT_DOWN_OK)+1);
     esp_deep_sleep_start();
     /* add by liuwenjian 2020-3-4 end */
 

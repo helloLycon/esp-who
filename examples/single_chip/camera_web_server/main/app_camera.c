@@ -630,7 +630,7 @@ static void send_queue_pic_task(void *pvParameter)
             /* send over: okay */
             printf("======send over========\r\n");
             g_pic_send_over = TRUE;
-            uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ));
+            uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
             break;
         }
         else if (NULL != g_pic_queue_head)
