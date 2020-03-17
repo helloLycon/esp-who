@@ -241,8 +241,8 @@ void pic_out_queue()
         goto skip_send;
     }
 
-    printf("file:%s, line:%d, send_pic = %p, next = %p, len = %d\r\n", 
-        __FILE__, __LINE__, send_pic, send_pic->next, send_pic->pic_len);
+    //printf("file:%s, line:%d, send_pic = %p, next = %p, len = %d\r\n", 
+    //    __FILE__, __LINE__, send_pic, send_pic->next, send_pic->pic_len);
     ret = send_jpeg(send_pic);
     if (CAMERA_OK != ret)
     {

@@ -54,6 +54,13 @@ init_info g_init_data;
 bool cameraEndFlag = 0;
 int max_sleep_uptime = 20;
 
+void nop(void) {
+    while(1) {
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+}
+
+
 /* add by liuwenjian 2020-3-4 begin */
 void init_para()
 {
@@ -133,7 +140,7 @@ static void echo_task(void *arg)
         int len = uart_read_bytes(ECHO_UART_NUM, (uint8_t *)data, BUF_SIZE, 20 / portTICK_RATE_MS);
 
         /* 观察是否超时(无人) */
-        if( fallingTickCount && ( (xTaskGetTickCount() - fallingTickCount) > (3*configTICK_RATE_HZ))) {
+        if( cameraEndFlag!=true && fallingTickCount && ( (xTaskGetTickCount() - fallingTickCount) > (3*configTICK_RATE_HZ))) {
             printf("=> falling edge time out\n");
             cameraEndFlag = true;
         }
@@ -142,11 +149,10 @@ static void echo_task(void *arg)
         if((len <= 0) || (data[0] != '~')) {
             continue;
         }
-        printf("len = %d\n", len);
+        //printf("len = %d\n", len);
         data[len] = '\0';
         if( strstr(data, CORE_SHUT_DOWN) ) {
-            printf("file:%s, line:%d, begin esp_deep_sleep_start\n", 
-                __FILE__, __LINE__);
+            printf("=> core shut down recvd, call esp_deep_sleep_start()\n");
             /* 进入深度休眠 */
             uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_OK, strlen(CORE_SHUT_DOWN_OK)+1);
             esp_deep_sleep_start();
