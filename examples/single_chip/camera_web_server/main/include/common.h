@@ -12,6 +12,7 @@
 
 #define ECHO_UART_NUM   (UART_NUM_0)
 
+#define DBG_NO_SLEEP_MODE  0
 
 /*核心板命令码*/
 #define CORE_SHUT_DOWN_REQ   "~shutdown_coreboard_request"  //核心板发出关机请求

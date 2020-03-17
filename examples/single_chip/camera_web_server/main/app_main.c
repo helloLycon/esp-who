@@ -155,7 +155,10 @@ static void echo_task(void *arg)
             printf("=> core shut down recvd, call esp_deep_sleep_start()\n");
             /* 进入深度休眠 */
             uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_OK, strlen(CORE_SHUT_DOWN_OK)+1);
+#if  DBG_NO_SLEEP_MODE
+#else
             esp_deep_sleep_start();
+#endif
         }
         else if( strstr(data, IR_WKUP_PIN_FALLING) ) {
             /* 上次是下降沿的话不用更新 */
@@ -291,6 +294,9 @@ void app_main()
         __FILE__, __LINE__);
     /* 进入深度休眠 */
     uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_OK, strlen(CORE_SHUT_DOWN_OK)+1);
+#if  DBG_NO_SLEEP_MODE
+    nop();
+#endif
     esp_deep_sleep_start();
     /* add by liuwenjian 2020-3-4 end */
 
