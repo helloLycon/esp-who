@@ -363,16 +363,6 @@ static esp_err_t stream_send()
     time_t old_time, cur_time;
 //    uint8_t *ptr = NULL;
 //    char *part_buf[64];
-#if CONFIG_ESP_FACE_DETECT_ENABLED
-    dl_matrix3du_t *image_matrix = NULL;
-    bool detected = false;
-    int face_id = 0;
-    int64_t fr_start = 0;
-    int64_t fr_ready = 0;
-    int64_t fr_face = 0;
-    int64_t fr_recognize = 0;
-    int64_t fr_encode = 0;
-#endif
     printf("file:%s, line:%d, begin esp_wait_sntp_sync\r\n", __FILE__, __LINE__);
     /* add by liuwenjian 2020-3-4 begin */
     /* 用于时间同步 */
@@ -403,11 +393,6 @@ static esp_err_t stream_send()
     printf("file:%s, line:%d, begin while, cur_time = %ld\r\n", __FILE__, __LINE__, cur_time);
     while (true)
     {
-#if CONFIG_ESP_FACE_DETECT_ENABLED
-        detected = false;
-        face_id = 0;
-#endif
-
         fb = esp_camera_fb_get();
     
 //        printf("file:%s, line:%d, fb = %p\r\n", __FILE__, __LINE__, fb);
@@ -418,15 +403,6 @@ static esp_err_t stream_send()
         }
         else
         {
-#if CONFIG_ESP_FACE_DETECT_ENABLED
-            fr_start = esp_timer_get_time();
-            fr_ready = fr_start;
-            fr_face = fr_start;
-            fr_encode = fr_start;
-            fr_recognize = fr_start;
-            if (!detection_enabled || fb->width > 400)
-            {
-#endif
                 if (fb->format != PIXFORMAT_JPEG)
                 {
                     bool jpeg_converted = frame2jpg(fb, 80, &_jpg_buf, &_jpg_buf_len);
@@ -465,86 +441,6 @@ static esp_err_t stream_send()
 //                    printf("file:%s, line:%d, test_frame = %lld, time = %ld\r\n", 
 //                        __FILE__, __LINE__, test_frame, time(NULL));
                 }
-#if CONFIG_ESP_FACE_DETECT_ENABLED
-            }
-            else
-            {
-
-                image_matrix = dl_matrix3du_alloc(1, fb->width, fb->height, 3);
-
-                if (!image_matrix)
-                {
-                    ESP_LOGE(TAG, "dl_matrix3du_alloc failed");
-                    res = ESP_FAIL;
-                }
-                else
-                {
-                    if (!fmt2rgb888(fb->buf, fb->len, fb->format, image_matrix->item))
-                    {
-                        ESP_LOGE(TAG, "fmt2rgb888 failed");
-                        res = ESP_FAIL;
-                    }
-                    else
-                    {
-#if CONFIG_ESP_FACE_DETECT_LSSH
-                        // lssh_update_config(&lssh_config, min_face, image_matrix->h, image_matrix->w);
-#endif
-                        fr_ready = esp_timer_get_time();
-                        box_array_t *net_boxes = NULL;
-                        if (detection_enabled)
-                        {
-#if CONFIG_ESP_FACE_DETECT_MTMN
-                            net_boxes = face_detect(image_matrix, &mtmn_config);
-#endif
-
-#if CONFIG_ESP_FACE_DETECT_LSSH
-                            net_boxes = lssh_detect_object(image_matrix, lssh_config);
-#endif
-                        }
-                        fr_face = esp_timer_get_time();
-                        fr_recognize = fr_face;
-                        if (net_boxes || fb->format != PIXFORMAT_JPEG)
-                        {
-                            if (net_boxes)
-                            {
-                                detected = true;
-#if CONFIG_ESP_FACE_RECOGNITION_ENABLED
-                                if (recognition_enabled)
-                                {
-                                    face_id = run_face_recognition(image_matrix, net_boxes);
-                                }
-                                fr_recognize = esp_timer_get_time();
-#endif
-                                draw_face_boxes(image_matrix, net_boxes, face_id);
-                                dl_lib_free(net_boxes->score);
-                                dl_lib_free(net_boxes->box);
-                                if (net_boxes->landmark != NULL)
-                                    dl_lib_free(net_boxes->landmark);
-                                dl_lib_free(net_boxes);
-                            }
-                            if (!fmt2jpg(image_matrix->item, fb->width * fb->height * 3, fb->width, fb->height, PIXFORMAT_RGB888, 90, &_jpg_buf, &_jpg_buf_len))
-                            {
-                                ESP_LOGE(TAG, "fmt2jpg failed");
-                            }
-                            esp_camera_fb_return(fb);
-                            fb = NULL;
-                        }
-                        else
-                        {
-                            _jpg_buf = fb->buf;
-                            _jpg_buf_len = fb->len;
-//                            printf("file:%s, line:%d, fb->len = %d\r\n", __FILE__, __LINE__, fb->len);
-                            /* 图片入队，基本没有调用到 */
-                            pic_in_queue(fb->len, fb->buf);
-//                            send_jpeg(fb->len, fb->buf);
-                        }
-                        fr_encode = esp_timer_get_time();
-                        
-                    }
-                    dl_matrix3du_free(image_matrix);
-                }
-            }
-#endif
         }
 
         if (fb)
