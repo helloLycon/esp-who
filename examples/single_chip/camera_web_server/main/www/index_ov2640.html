@@ -395,16 +395,32 @@
                             <div class="range-max">2</div>
                         </div>
                         <div class="input-group" id="device_id-group">
-                        	<label for="device_id">device id</label>
+				<label for="device_id"> <b>*device id</b> </label>
                         	<input type="text" id="device_id" value="11111" style="height:20px;width:100px;" class="default-action">
                         </div>
                         <div class="input-group" id="service_ip-group">
-                        	<label for="service_ip">service ip</label>
+				<label for="service_ip"> <b>*service ip</b></label>
                         	<input type="text" id="service_ip" value="10.10.1.238" style="height:20px;width:100px;" class="default-action">
                         </div>
                         <div class="input-group" id="service_port-group">
-                        	<label for="service_port">service port</label>
+				<label for="service_port"><b>*service port</b></label>
                         	<input type="text" id="service_port" value="10086" style="height:20px;width:100px;" class="default-action">
+                        </div>
+                        <div class="input-group" id="wifi_ssid-group">
+				<label for="wifi_ssid"><b>*wifi_ssid</b></label>
+                        	<input type="text" id="wifi_ssid" value="" style="height:20px;width:100px;" class="default-action">
+                        </div>
+                        <div class="input-group" id="wifi_key-group">
+				<label for="wifi_key"><b>*wifi_key</b></label>
+                        	<input type="text" id="wifi_key" value="" style="height:20px;width:100px;" class="default-action">
+                        </div>
+                        <div class="input-group" id="wifi_ap_ssid-group">
+				<label for="wifi_ap_ssid"><b>*wifi_ap_ssid</b></label>
+                        	<input type="text" id="wifi_ap_ssid" value="" style="height:20px;width:100px;" class="default-action">
+                        </div>
+                        <div class="input-group" id="wifi_ap_key-group">
+				<label for="wifi_ap_key"><b>*wifi_ap_key</b></label>
+                        	<input type="text" id="wifi_ap_key" value="" style="height:20px;width:100px;" class="default-action">
                         </div>
                         <div class="input-group" id="special_effect-group">
                             <label for="special_effect">Special Effect</label>
@@ -779,6 +795,22 @@ document.addEventListener('DOMContentLoaded', function (event) {
   const service_port = document.getElementById("service_port")
   service_port.onchange = () => {
     updateConfig(service_port)
+  }
+  const wifi_ssid = document.getElementById("wifi_ssid")
+  wifi_ssid.onchange = () => {
+    updateConfig(wifi_ssid)
+  }
+  const wifi_key= document.getElementById("wifi_key")
+  wifi_key.onchange = () => {
+    updateConfig(wifi_key)
+  }
+  const wifi_ap_ssid= document.getElementById("wifi_ap_ssid")
+  wifi_ap_ssid.onchange = () => {
+    updateConfig(wifi_ap_ssid)
+  }
+  const wifi_ap_key= document.getElementById("wifi_ap_key")
+  wifi_ap_key.onchange = () => {
+    updateConfig(wifi_ap_key)
   }
 
   // Custom actions

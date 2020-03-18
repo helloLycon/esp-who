@@ -39,19 +39,13 @@
 #include "lwip/sys.h"
 
 #include "common.h"
-
+#include "app_wifi.h"
 
 /* The examples use WiFi configuration that you can set via 'make menuconfig'.
 
    If you'd rather not, just change the below entries to strings with
    the config you want - ie #define EXAMPLE_WIFI_SSID "mywifissid"
 */
-#define EXAMPLE_ESP_WIFI_SSID      CONFIG_ESP_WIFI_SSID
-#define EXAMPLE_ESP_WIFI_PASS      CONFIG_ESP_WIFI_PASSWORD
-#define EXAMPLE_ESP_MAXIMUM_RETRY  CONFIG_ESP_MAXIMUM_RETRY
-#define EXAMPLE_ESP_WIFI_AP_SSID   CONFIG_ESP_WIFI_AP_SSID
-#define EXAMPLE_ESP_WIFI_AP_PASS   CONFIG_ESP_WIFI_AP_PASSWORD
-#define EXAMPLE_IP_ADDR            CONFIG_SERVER_IP
 
 static const char *TAG = "camera wifi";
 extern const uint8_t server_cert_pem_start[] asm("_binary_ca_cert_pem_start");
@@ -123,12 +117,12 @@ void wifi_init_softap()
     }
     wifi_config_t wifi_config;
     memset(&wifi_config, 0, sizeof(wifi_config_t));
-    snprintf((char*)wifi_config.ap.ssid, 32, "%s", EXAMPLE_ESP_WIFI_AP_SSID);
+    snprintf((char*)wifi_config.ap.ssid, 32, "%s", g_init_data.config_data.wifi_ap_ssid);
     wifi_config.ap.ssid_len = strlen((char*)wifi_config.ap.ssid);
-    snprintf((char*)wifi_config.ap.password, 64, "%s", EXAMPLE_ESP_WIFI_AP_PASS);
+    snprintf((char*)wifi_config.ap.password, 64, "%s", g_init_data.config_data.wifi_ap_key);
     wifi_config.ap.max_connection = 1;
     wifi_config.ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
-    if (strlen(EXAMPLE_ESP_WIFI_AP_PASS) == 0) 
+    if (strlen(g_init_data.config_data.wifi_ap_key) == 0) 
     {
         wifi_config.ap.authmode = WIFI_AUTH_OPEN;
     }
@@ -137,22 +131,22 @@ void wifi_init_softap()
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config));
 
     ESP_LOGI(TAG, "wifi_init_softap finished.SSID:%s password:%s",
-             EXAMPLE_ESP_WIFI_AP_SSID, EXAMPLE_ESP_WIFI_AP_PASS);
+             g_init_data.config_data.wifi_ap_ssid, g_init_data.config_data.wifi_ap_key);
 }
 
 void wifi_init_sta()
 {
     wifi_config_t wifi_config;
     memset(&wifi_config, 0, sizeof(wifi_config_t));
-    snprintf((char*)wifi_config.sta.ssid, 32, "%s", EXAMPLE_ESP_WIFI_SSID);
-    snprintf((char*)wifi_config.sta.password, 64, "%s", EXAMPLE_ESP_WIFI_PASS);
+    snprintf((char*)wifi_config.sta.ssid, 32, "%s", g_init_data.config_data.wifi_ssid);
+    snprintf((char*)wifi_config.sta.password, 64, "%s", g_init_data.config_data.wifi_key);
 
     printf("file:%s, line:%d, in wifi_init_sta\r\n", __FILE__, __LINE__);
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
 
     ESP_LOGI(TAG, "wifi_init_sta finished.");
     ESP_LOGI(TAG, "connect to ap SSID:%s password:%s",
-             EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+             g_init_data.config_data.wifi_ssid, g_init_data.config_data.wifi_key);
 }
 
 /* add by liuwenjian 2020-3-4 begin */
@@ -229,15 +223,15 @@ void app_wifi_main()
 
     printf("file:%s, line:%d, in app_wifi_main\r\n", __FILE__, __LINE__);
 
-    if (strlen(EXAMPLE_ESP_WIFI_AP_SSID) && strlen(EXAMPLE_ESP_WIFI_SSID))
+    if (strlen(g_init_data.config_data.wifi_ap_ssid) && strlen(g_init_data.config_data.wifi_ssid))
     {
         mode = WIFI_MODE_APSTA;
     }
-    else if (strlen(EXAMPLE_ESP_WIFI_AP_SSID))
+    else if (strlen(g_init_data.config_data.wifi_ap_ssid))
     {
         mode = WIFI_MODE_AP;
     }
-    else if (strlen(EXAMPLE_ESP_WIFI_SSID))
+    else if (strlen(g_init_data.config_data.wifi_ssid))
     {
         mode = WIFI_MODE_STA;
     }

@@ -711,6 +711,26 @@ static esp_err_t update_config(char *type, char *value)
     {
         g_init_data.config_data.service_port = (unsigned short)atoi(value);
     }
+    else if (0 == memcmp(type, "wifi_ssid", strlen("wifi_ssid")))
+    {
+        memset(g_init_data.config_data.wifi_ssid, 0, sizeof(g_init_data.config_data.wifi_ssid));
+        strcpy(g_init_data.config_data.wifi_ssid, value);
+    }
+    else if (0 == memcmp(type, "wifi_key", strlen("wifi_key")))
+    {
+        memset(g_init_data.config_data.wifi_key, 0, sizeof(g_init_data.config_data.wifi_key));
+        strcpy(g_init_data.config_data.wifi_key, value);
+    }
+    else if (0 == memcmp(type, "wifi_ap_key", strlen("wifi_ap_key")))
+    {
+        memset(g_init_data.config_data.wifi_ap_key, 0, sizeof(g_init_data.config_data.wifi_ap_key));
+        strcpy(g_init_data.config_data.wifi_ap_key, value);
+    }
+    else if (0 == memcmp(type, "wifi_ap_ssid", strlen("wifi_ap_ssid")))
+    {
+        memset(g_init_data.config_data.wifi_ap_ssid, 0, sizeof(g_init_data.config_data.wifi_ap_ssid));
+        strcpy(g_init_data.config_data.wifi_ap_ssid, value);
+    }
     else
     {
         printf("file:%s, line:%d, value = %s\r\n", __FILE__, __LINE__, value);
@@ -718,6 +738,7 @@ static esp_err_t update_config(char *type, char *value)
         return ESP_FAIL;
     }
 
+    printf("=-> write settings~~~\n");
     err = nvs_set_blob(my_handle, "device_info", &(g_init_data.config_data), sizeof(config_para));
     if (err != ESP_OK)
     {
@@ -823,6 +844,34 @@ static esp_err_t cmd_handler(httpd_req_t *req)
         res = update_config(SERVICE_PORT_FLAG, value);
     }
     /* add by liuwenjian 2020-3-4 end */
+    else if (!strcmp(variable, "wifi_ssid"))
+    {
+        /* Éè±¸±àºÅÅäÖÃ */
+        printf("file:%s, line:%d, variable = %s, value = %s\r\n", 
+            __FILE__, __LINE__, variable, value);
+        res = update_config("wifi_ssid", value);
+    }
+    else if (!strcmp(variable, "wifi_key"))
+    {
+        /* Éè±¸±àºÅÅäÖÃ */
+        printf("file:%s, line:%d, variable = %s, value = %s\r\n", 
+            __FILE__, __LINE__, variable, value);
+        res = update_config("wifi_key", value);
+    }
+    else if (!strcmp(variable, "wifi_ap_ssid"))
+    {
+        /* Éè±¸±àºÅÅäÖÃ */
+        printf("file:%s, line:%d, variable = %s, value = %s\r\n", 
+            __FILE__, __LINE__, variable, value);
+        res = update_config("wifi_ap_ssid", value);
+    }
+    else if (!strcmp(variable, "wifi_ap_key"))
+    {
+        /* Éè±¸±àºÅÅäÖÃ */
+        printf("file:%s, line:%d, variable = %s, value = %s\r\n", 
+            __FILE__, __LINE__, variable, value);
+        res = update_config("wifi_ap_key", value);
+    }
     else if (!strcmp(variable, "quality"))
         res = s->set_quality(s, val);
     else if (!strcmp(variable, "contrast"))
@@ -961,6 +1010,10 @@ static esp_err_t status_handler(httpd_req_t *req)
     p += sprintf(p, "\"device_id\":\"%s\",", config_data.device_id);
     p += sprintf(p, "\"service_ip\":\"%s\",", config_data.service_ip_str);
     p += sprintf(p, "\"service_port\":\"%d\",", config_data.service_port);
+    p += sprintf(p, "\"wifi_ssid\":\"%s\",", config_data.wifi_ssid);
+    p += sprintf(p, "\"wifi_key\":\"%s\",", config_data.wifi_key);
+    p += sprintf(p, "\"wifi_ap_ssid\":\"%s\",", config_data.wifi_ap_ssid);
+    p += sprintf(p, "\"wifi_ap_key\":\"%s\",", config_data.wifi_ap_key);
     p += sprintf(p, "\"sharpness\":%d,", s->status.sharpness);
     p += sprintf(p, "\"special_effect\":%u,", s->status.special_effect);
     p += sprintf(p, "\"wb_mode\":%u,", s->status.wb_mode);

@@ -62,8 +62,9 @@ void nop(void) {
 
 
 /* add by liuwenjian 2020-3-4 begin */
-void init_para()
+void init_para(bool erase_all)
 {
+    bool fix = false;
     nvs_handle my_handle;
     esp_err_t err;
     
@@ -79,6 +80,11 @@ void init_para()
         return ;
     }
 
+    if(erase_all) {
+        nvs_erase_all(my_handle);
+        nvs_commit(my_handle);
+    }
+
     /* 获取设备基本配置 */
     // Read run time blob
     size_t required_size = sizeof(config_para);  // value will default to 0, if not set yet in NVS
@@ -86,10 +92,56 @@ void init_para()
     err = nvs_get_blob(my_handle, "device_info", &(g_init_data.config_data), &required_size);
     if (err != ESP_OK )
     {
+        printf("=-> reset all settings\n");
+        fix = true;
         g_init_data.config_data.service_port = TCP_PORT;
         strcpy(g_init_data.config_data.service_ip_str, TCP_SERVER_ADRESS);
         strcpy(g_init_data.config_data.device_id, DEVICE_INFO);
+        strcpy(g_init_data.config_data.wifi_ssid, EXAMPLE_ESP_WIFI_SSID);
+        strcpy(g_init_data.config_data.wifi_key, EXAMPLE_ESP_WIFI_PASS);
+        strcpy(g_init_data.config_data.wifi_ap_ssid, EXAMPLE_ESP_WIFI_AP_SSID);
+        strcpy(g_init_data.config_data.wifi_ap_key, EXAMPLE_ESP_WIFI_AP_PASS);
+    }
 
+    if (0 == g_init_data.config_data.service_port)
+    {
+        fix = true;
+        g_init_data.config_data.service_port = TCP_PORT;
+    }
+    
+    if (0 == g_init_data.config_data.service_ip_str[0])
+    {
+        fix = true;
+        strcpy(g_init_data.config_data.service_ip_str, TCP_SERVER_ADRESS);
+    }
+
+    if (0 == g_init_data.config_data.device_id[0])
+    {
+        fix = true;
+        strcpy(g_init_data.config_data.device_id, DEVICE_INFO);
+    }
+    if( memchr(g_init_data.config_data.wifi_ssid, 0, sizeof(g_init_data.config_data.wifi_ssid)) == NULL ) {
+        fix = true;
+        strcpy(g_init_data.config_data.wifi_ssid, EXAMPLE_ESP_WIFI_SSID);
+    }
+    if( memchr(g_init_data.config_data.wifi_key, 0, sizeof(g_init_data.config_data.wifi_key)) == NULL ) {
+        fix = true;
+        strcpy(g_init_data.config_data.wifi_key, EXAMPLE_ESP_WIFI_PASS);
+    }
+    if( memchr(g_init_data.config_data.wifi_ap_ssid, 0, sizeof(g_init_data.config_data.wifi_ap_ssid)) == NULL ) {
+        printf("=-> reset wifi_ap_ssid\n");
+        fix = true;
+        strcpy(g_init_data.config_data.wifi_ap_ssid, EXAMPLE_ESP_WIFI_AP_SSID);
+    }
+    if( memchr(g_init_data.config_data.wifi_ap_key, 0, sizeof(g_init_data.config_data.wifi_ap_key)) == NULL ) {
+        fix = true;
+        strcpy(g_init_data.config_data.wifi_ap_key, EXAMPLE_ESP_WIFI_AP_PASS);
+    }
+
+    printf("file:%s, line:%d, DevId = %s, g_init_data.service_ip_str = %s, g_init_data.service_ip_str[0] = %d\r\n", 
+        __FILE__, __LINE__, g_init_data.config_data.device_id, g_init_data.config_data.service_ip_str, g_init_data.config_data.service_ip_str[0]);
+
+    if(fix) {
         /* write default settings into nvs */
         err = nvs_set_blob(my_handle, "device_info", &(g_init_data.config_data), sizeof(config_para));
         if (err == ESP_OK)
@@ -98,25 +150,6 @@ void init_para()
             err = nvs_commit(my_handle);
         }
     }
-
-    if (0 == g_init_data.config_data.service_port)
-    {
-        g_init_data.config_data.service_port = TCP_PORT;
-    }
-    
-    if (0 == g_init_data.config_data.service_ip_str[0])
-    {
-        strcpy(g_init_data.config_data.service_ip_str, TCP_SERVER_ADRESS);
-    }
-    printf("file:%s, line:%d, g_init_data.service_ip_str = %s, g_init_data.service_ip_str[0] = %d\r\n", 
-        __FILE__, __LINE__, g_init_data.config_data.service_ip_str, g_init_data.config_data.service_ip_str[0]);
-
-    if (0 == g_init_data.config_data.device_id[0])
-    {
-        strcpy(g_init_data.config_data.device_id, DEVICE_INFO);
-    }
-    printf("file:%s, line:%d, device_id = %s\r\n", 
-        __FILE__, __LINE__, g_init_data.config_data.device_id);
     nvs_close(my_handle);
     return ;
 }
@@ -236,7 +269,7 @@ void app_main()
     i2c_app_init();
     /* add by liuwenjian 2020-3-4 begin */
     /* 设备信息初始化 */
-    init_para();
+    init_para(false);
     /* add by liuwenjian 2020-3-4 end */
 
 /*    buff = (char *)heap_caps_malloc(3 * 1024 * 1024, MALLOC_CAP_SPIRAM);

@@ -39,6 +39,10 @@ typedef struct config_para{
     unsigned short service_port;    /* 服务器端口号 */
     char service_ip_str[16];        /* 服务器ip 地址 */
     char device_id[64];             /* 设备编号 */
+    char wifi_ssid[64];
+    char wifi_key[32];
+    char wifi_ap_ssid[64];
+    char wifi_ap_key[32];
 }config_para;
 
 /* 初始化参数 */
