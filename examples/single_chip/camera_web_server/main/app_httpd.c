@@ -919,6 +919,35 @@ static esp_err_t cmd_handler(httpd_req_t *req)
 static esp_err_t status_handler(httpd_req_t *req)
 {
     static char json_response[1024];
+    nvs_handle my_handle;
+    config_para config_data;
+    esp_err_t err;
+
+    // Open
+    err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK)
+    {
+        printf("file:%s, line:%d, nvs_open failed!\r\n", __FILE__, __LINE__);
+    }
+    else
+    {
+        // Read run time blob
+        size_t required_size = sizeof(config_data);  // value will default to 0, if not set yet in NVS
+        // obtain required memory space to store blob being read from NVS
+        err = nvs_get_blob(my_handle, "device_info", &config_data, &required_size);
+        if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND)
+        {
+            printf("file:%s, line:%d, nvs_get_blob, err = %d\r\n", __FILE__, __LINE__, err);
+        }
+        else
+        {
+            printf("file:%s, line:%d, device_id = %s, ip = %s, port = %d\r\n", 
+                __FILE__, __LINE__, config_data.device_id, config_data.service_ip_str, config_data.service_port);
+        }
+        
+        nvs_close(my_handle);
+    }
+    /*-------------------------------------------------*/
 
     sensor_t *s = esp_camera_sensor_get();
     char *p = json_response;
@@ -929,6 +958,9 @@ static esp_err_t status_handler(httpd_req_t *req)
     p += sprintf(p, "\"brightness\":%d,", s->status.brightness);
     p += sprintf(p, "\"contrast\":%d,", s->status.contrast);
     p += sprintf(p, "\"saturation\":%d,", s->status.saturation);
+    p += sprintf(p, "\"device_id\":\"%s\",", config_data.device_id);
+    p += sprintf(p, "\"service_ip\":\"%s\",", config_data.service_ip_str);
+    p += sprintf(p, "\"service_port\":\"%d\",", config_data.service_port);
     p += sprintf(p, "\"sharpness\":%d,", s->status.sharpness);
     p += sprintf(p, "\"special_effect\":%u,", s->status.special_effect);
     p += sprintf(p, "\"wb_mode\":%u,", s->status.wb_mode);

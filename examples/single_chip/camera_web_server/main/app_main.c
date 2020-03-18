@@ -84,13 +84,19 @@ void init_para()
     size_t required_size = sizeof(config_para);  // value will default to 0, if not set yet in NVS
     // obtain required memory space to store blob being read from NVS
     err = nvs_get_blob(my_handle, "device_info", &(g_init_data.config_data), &required_size);
-    if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND)
+    if (err != ESP_OK )
     {
         g_init_data.config_data.service_port = TCP_PORT;
         strcpy(g_init_data.config_data.service_ip_str, TCP_SERVER_ADRESS);
         strcpy(g_init_data.config_data.device_id, DEVICE_INFO);
-        nvs_close(my_handle);
-        return ;
+
+        /* write default settings into nvs */
+        err = nvs_set_blob(my_handle, "device_info", &(g_init_data.config_data), sizeof(config_para));
+        if (err == ESP_OK)
+        {
+            // Commit
+            err = nvs_commit(my_handle);
+        }
     }
 
     if (0 == g_init_data.config_data.service_port)
