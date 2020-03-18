@@ -52,7 +52,7 @@ unsigned char g_update_flag = FALSE;
 init_info g_init_data;
 
 bool cameraEndFlag = 0;
-int max_sleep_uptime = 20;
+int max_sleep_uptime = 60;
 
 void nop(void) {
     while(1) {
@@ -173,7 +173,7 @@ static void echo_task(void *arg)
         }
         else if( strstr(data, WAKE_UP_FROM_KEY) ) {
             printf("=> wake up from key\n");
-            max_sleep_uptime = 60;
+            max_sleep_uptime = 60*2;
         }
     }
 
