@@ -52,11 +52,17 @@ unsigned char g_update_flag = FALSE;
 init_info g_init_data;
 
 bool noManFlag = false;
-int max_sleep_uptime = 60;
+int max_sleep_uptime = DEF_MAX_SLEEP_TIME;
 
 void nop(void) {
     while(1) {
         vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+}
+
+void upgrade_block(void) {
+    if(TRUE == g_update_flag) {
+        nop();
     }
 }
 
@@ -201,6 +207,7 @@ static void echo_task(void *arg)
             uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_OK, strlen(CORE_SHUT_DOWN_OK)+1);
 #if  DBG_NO_SLEEP_MODE
 #else
+            upgrade_block();
             esp_deep_sleep_start();
 #endif
         }
@@ -341,6 +348,7 @@ void app_main()
 #if  DBG_NO_SLEEP_MODE
     nop();
 #endif
+    upgrade_block();
     esp_deep_sleep_start();
     /* add by liuwenjian 2020-3-4 end */
 

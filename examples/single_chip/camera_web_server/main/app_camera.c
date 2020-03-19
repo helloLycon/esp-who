@@ -513,6 +513,7 @@ static void recv_data_task(void *pvParameter)
 static void send_queue_pic_task(void *pvParameter)
 {
     int ret;
+    extern int max_sleep_uptime;
     while (true)
     {
         if (noManFlag || ((NULL == g_pic_queue_head)&&(TRUE == g_camera_over)) )
@@ -528,7 +529,11 @@ static void send_queue_pic_task(void *pvParameter)
             /* send over: okay */
             printf("======send over========\r\n");
             g_pic_send_over = TRUE;
-            uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
+            if( max_sleep_uptime == DEF_MAX_SLEEP_TIME ) {
+                upgrade_block();
+                printf("=-> send shutdown request\n");
+                uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
+            }
             break;
         }
         else if (NULL != g_pic_queue_head)
