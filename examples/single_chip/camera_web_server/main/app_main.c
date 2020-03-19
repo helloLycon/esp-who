@@ -51,7 +51,7 @@ unsigned char g_pic_send_over = FALSE;
 unsigned char g_update_flag = FALSE;
 init_info g_init_data;
 
-bool cameraEndFlag = 0;
+bool noManFlag = false;
 int max_sleep_uptime = 60;
 
 void nop(void) {
@@ -184,9 +184,9 @@ static void echo_task(void *arg)
         int len = uart_read_bytes(ECHO_UART_NUM, (uint8_t *)data, BUF_SIZE, 20 / portTICK_RATE_MS);
 
         /* 观察是否超时(无人) */
-        if( cameraEndFlag!=true && fallingTickCount && ( (xTaskGetTickCount() - fallingTickCount) > (3*configTICK_RATE_HZ))) {
+        if( noManFlag!=true && fallingTickCount && ( (xTaskGetTickCount() - fallingTickCount) > (3*configTICK_RATE_HZ))) {
             printf("=> falling edge time out\n");
-            cameraEndFlag = true;
+            noManFlag = true;
         }
         
         //printf("%d\n", xTaskGetTickCount());

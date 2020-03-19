@@ -61,7 +61,7 @@ extern unsigned char g_camera_over;
 extern unsigned char g_pic_send_over;
 extern unsigned char g_update_flag;
 extern init_info g_init_data;
-extern bool cameraEndFlag;
+extern bool noManFlag;
 
 #endif
 

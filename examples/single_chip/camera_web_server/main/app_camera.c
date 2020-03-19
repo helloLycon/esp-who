@@ -237,7 +237,7 @@ void pic_out_queue()
         return ;
     }
 
-    if(cameraEndFlag) {
+    if(noManFlag) {
         goto skip_send;
     }
 
@@ -391,7 +391,7 @@ static esp_err_t stream_send()
     /* 录像计时 */
     cur_time = old_time = time(NULL);
     printf("file:%s, line:%d, begin while, cur_time = %ld\r\n", __FILE__, __LINE__, cur_time);
-    while (true)
+    while (false == noManFlag)
     {
         fb = esp_camera_fb_get();
     
@@ -421,7 +421,9 @@ static esp_err_t stream_send()
 //                    printf("file:%s, line:%d, fb->len = %d, time = %ld\r\n", 
 //                        __FILE__, __LINE__, fb->len, time(NULL));
                     /* 图片入队列 */
-                    pic_in_queue(fb->len, fb->buf);
+                    if(false == noManFlag) {
+                        pic_in_queue(fb->len, fb->buf);
+                    }
 //                    send_jpeg(fb->len, fb->buf);
                     cur_time = time(NULL);
                     if ((cur_time - old_time > CAMERA_VIDEO_TIME) && (FALSE == g_camera_over))
@@ -513,7 +515,7 @@ static void send_queue_pic_task(void *pvParameter)
     int ret;
     while (true)
     {
-        if (cameraEndFlag || ((NULL == g_pic_queue_head)&&(TRUE == g_camera_over)) )
+        if (noManFlag || ((NULL == g_pic_queue_head)&&(TRUE == g_camera_over)) )
         {
 //            printf("file:%s, line:%d, send over\r\n", __FILE__, __LINE__);
             ret = send_jpeg(NULL);
