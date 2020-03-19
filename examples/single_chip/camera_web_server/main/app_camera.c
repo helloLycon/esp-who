@@ -633,10 +633,23 @@ void app_camera_main ()
     // camera init
 /*    printf("file:%s, line:%d, LEDC_CHANNEL_0 = %d, LEDC_TIMER_0 = %d, PIXFORMAT_JPEG = %d, FRAMESIZE_UXGA = %d\r\n", 
         __FILE__, __LINE__, LEDC_CHANNEL_0, LEDC_TIMER_0, PIXFORMAT_JPEG, FRAMESIZE_UXGA);*/
-    esp_err_t err = esp_camera_init(&config);
+
+    int retry;
+    esp_err_t err;
+    for (retry = 0; retry<3; retry++) {
+        err = esp_camera_init(&config);
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Camera init failed with error 0x%x, retry", err);
+            vTaskDelay(300 / portTICK_PERIOD_MS);
+        } else {
+            ESP_LOGI(TAG, "Camera init succeed");
+            break;
+        }
+    }
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "Camera init failed with error 0x%x", err);
+        ESP_LOGE(TAG, "Camera init failed with error 0x%x, return", err);
         return;
     }
 
