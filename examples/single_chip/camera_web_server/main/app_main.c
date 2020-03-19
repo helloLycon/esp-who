@@ -184,6 +184,8 @@ static void echo_task(void *arg)
     // Configure a temporary buffer for the incoming data
     char *data = (char *) malloc(BUF_SIZE);
 
+    uart_write_bytes(ECHO_UART_NUM, GET_STATUS, strlen(GET_STATUS)+1);
+
     while (1)
     {
         // Read data from the UART
@@ -225,6 +227,28 @@ static void echo_task(void *arg)
         else if( strstr(data, WAKE_UP_FROM_KEY) ) {
             printf("=> wake up from key\n");
             max_sleep_uptime = 60*2;
+        }
+        else if(strstr(data, REC_STATUS)) {
+            /* key/ir */
+            if( 'k' == data[strlen(REC_STATUS)] ) {
+                /* key */
+                printf("STATUS: key\n");
+                max_sleep_uptime = 60*2;
+            } else {
+                printf("STATUS: ir\n");
+            }
+
+            /* high,low */
+            if( 'h' == strchr(data, ',')[1] ) {
+                printf("STATUS: high\n");
+            } else {
+                printf("STATUS: low\n");
+                /* 上次是下降沿的话不用更新 */
+                if( 0 == fallingTickCount) {
+                    fallingTickCount = xTaskGetTickCount();
+                }
+                printf("=> ir low level(act as falling edge)\n");
+            }
         }
     }
 

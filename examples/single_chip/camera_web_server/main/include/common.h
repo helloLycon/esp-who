@@ -25,6 +25,8 @@
 #define SET_IR_VOLTAGE       "~set_ir_voltage="             //配置红外灯控制电压阀值
 #define SET_IR_VOLTAGE_SUC   "~set_ir_voltage_suc"
 #define SET_IR_VOLTAGE_FAIL  "~set_ir_voltage_fail"
+#define GET_STATUS    "~get_status"                           //获取状态
+#define REC_STATUS  "~rec_status="                          //返回状态~status=唤醒来源，移动侦测io状态，~rec_status=key(ir),high(low)
 
 
 #define TCP_PORT            10086               //统一的端口号，包括TCP客户端或者服务端
