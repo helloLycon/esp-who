@@ -101,6 +101,7 @@ void init_para(bool erase_all)
         strcpy(g_init_data.config_data.wifi_key, EXAMPLE_ESP_WIFI_PASS);
         strcpy(g_init_data.config_data.wifi_ap_ssid, EXAMPLE_ESP_WIFI_AP_SSID);
         strcpy(g_init_data.config_data.wifi_ap_key, EXAMPLE_ESP_WIFI_AP_PASS);
+        g_init_data.config_data.ir_voltage = IR_VOL_UNSET;
     }
 
     if (0 == g_init_data.config_data.service_port)
@@ -136,6 +137,10 @@ void init_para(bool erase_all)
     if( memchr(g_init_data.config_data.wifi_ap_key, 0, sizeof(g_init_data.config_data.wifi_ap_key)) == NULL ) {
         fix = true;
         strcpy(g_init_data.config_data.wifi_ap_key, EXAMPLE_ESP_WIFI_AP_PASS);
+    }
+    if(g_init_data.config_data.ir_voltage <= 0 || g_init_data.config_data.ir_voltage > 3000) {
+        fix = true;
+        g_init_data.config_data.ir_voltage = IR_VOL_UNSET;
     }
 
     printf("file:%s, line:%d, DevId = %s, g_init_data.service_ip_str = %s, g_init_data.service_ip_str[0] = %d\r\n", 

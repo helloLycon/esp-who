@@ -422,6 +422,10 @@
 				<label for="wifi_ap_key"><b>*wifi_ap_key</b></label>
                         	<input type="text" id="wifi_ap_key" value="" style="height:20px;width:100px;" class="default-action">
                         </div>
+                        <div class="input-group" id="ir_voltage-group">
+				<label for="ir_voltage"><b>*ir_voltage</b></label>
+                        	<input type="text" id="ir_voltage" value="" style="height:20px;width:100px;" class="default-action">
+                        </div>
                         <div class="input-group" id="special_effect-group">
                             <label for="special_effect">Special Effect</label>
                             <select id="special_effect" class="default-action">
@@ -811,6 +815,10 @@ document.addEventListener('DOMContentLoaded', function (event) {
   const wifi_ap_key= document.getElementById("wifi_ap_key")
   wifi_ap_key.onchange = () => {
     updateConfig(wifi_ap_key)
+  }
+  const ir_voltage= document.getElementById("ir_voltage")
+  ir_voltage.onchange = () => {
+    updateConfig(ir_voltage)
   }
 
   // Custom actions

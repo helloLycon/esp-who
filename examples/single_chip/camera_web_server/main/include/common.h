@@ -21,10 +21,15 @@
 #define IR_WKUP_PIN_RISING   "~ir_wkup_pin_rising"              //唤醒脚上升沿，有人移动
 #define IR_WKUP_PIN_FALLING  "~ir_wkup_pin_falling"            //唤醒脚下降沿，没人移动
 #define WAKE_UP_FROM_KEY     "~wkup_from_key"            //按键唤醒
+#define SET_IR_VOLTAGE       "~set_ir_voltage="             //配置红外灯控制电压阀值
+#define SET_IR_VOLTAGE_SUC   "~set_ir_voltage_suc"
+#define SET_IR_VOLTAGE_FAIL  "~set_ir_voltage_fail"
 
 
 #define TCP_PORT            10086               //统一的端口号，包括TCP客户端或者服务端
 #define CAMERA_VIDEO_TIME   12
+
+#define IR_VOL_UNSET      0
 
 #ifndef FALSE
 #define FALSE 0
@@ -43,6 +48,7 @@ typedef struct config_para{
     char wifi_key[32];
     char wifi_ap_ssid[64];
     char wifi_ap_key[32];
+    int  ir_voltage;
 }config_para;
 
 /* 初始化参数 */

@@ -30,6 +30,7 @@
 #include "esp_spiffs.h"
 #include "tcp_bsp.h"
 #include "md5.h"
+#include "driver/uart.h"
 #include "common.h"
 
 #if defined(ARDUINO_ARCH_ESP32) && defined(CONFIG_ARDUHAL_ESP_LOG)
@@ -731,6 +732,15 @@ static esp_err_t update_config(char *type, char *value)
         memset(g_init_data.config_data.wifi_ap_ssid, 0, sizeof(g_init_data.config_data.wifi_ap_ssid));
         strcpy(g_init_data.config_data.wifi_ap_ssid, value);
     }
+    else if (0 == memcmp(type, "ir_voltage", strlen("ir_voltage")))
+    {
+        g_init_data.config_data.ir_voltage = atoi(value);
+
+        char send_str[32];
+        sprintf(send_str, "%s%d", SET_IR_VOLTAGE, atoi(value));
+        printf("=-> send: %s\n", send_str);
+        uart_write_bytes(ECHO_UART_NUM, send_str, strlen(send_str)+1);
+    }
     else
     {
         printf("file:%s, line:%d, value = %s\r\n", __FILE__, __LINE__, value);
@@ -871,6 +881,13 @@ static esp_err_t cmd_handler(httpd_req_t *req)
         printf("file:%s, line:%d, variable = %s, value = %s\r\n", 
             __FILE__, __LINE__, variable, value);
         res = update_config("wifi_ap_key", value);
+    }
+    else if (!strcmp(variable, "ir_voltage"))
+    {
+        /* Éè±¸±àºÅÅäÖÃ */
+        printf("file:%s, line:%d, variable = %s, value = %s\r\n", 
+            __FILE__, __LINE__, variable, value);
+        res = update_config("ir_voltage", value);
     }
     else if (!strcmp(variable, "quality"))
         res = s->set_quality(s, val);
@@ -1014,6 +1031,7 @@ static esp_err_t status_handler(httpd_req_t *req)
     p += sprintf(p, "\"wifi_key\":\"%s\",", config_data.wifi_key);
     p += sprintf(p, "\"wifi_ap_ssid\":\"%s\",", config_data.wifi_ap_ssid);
     p += sprintf(p, "\"wifi_ap_key\":\"%s\",", config_data.wifi_ap_key);
+    p += sprintf(p, "\"ir_voltage\":\"%d\",", config_data.ir_voltage);
     p += sprintf(p, "\"sharpness\":%d,", s->status.sharpness);
     p += sprintf(p, "\"special_effect\":%u,", s->status.special_effect);
     p += sprintf(p, "\"wb_mode\":%u,", s->status.wb_mode);
