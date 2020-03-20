@@ -650,7 +650,12 @@ void app_camera_main ()
     }
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "Camera init failed with error 0x%x, return", err);
+        for(int i=0;i<10;i++) {
+            ESP_LOGE(TAG, "Camera init failed with error 0x%x, return", err);
+        }
+        upgrade_block();
+        printf("sleep_______\n");
+        esp_deep_sleep_start();
         return;
     }
 
