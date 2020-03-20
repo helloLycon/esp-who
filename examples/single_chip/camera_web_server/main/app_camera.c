@@ -40,6 +40,7 @@
 #include "common.h"
 #include "camera_error.h"
 #include "i2c_example_main.h"
+#include "adc1_example_main.h"
 
 static const char *TAG = "app_camera";
 /* add by liuwenjian 2020-3-4 begin */
@@ -315,7 +316,7 @@ void send_heartbeat_packet()
     send_heartbeat_info heartbeat_data;
     packet_info packet_send_data;
 
-    heartbeat_data.battery = 8888;
+    heartbeat_data.battery = (uint16_t)adc_read_battery_percent();
     heartbeat_data.cur_time = time(NULL);
 
     packet_send_data.type = SEND_HEARTBEAT_CODE;

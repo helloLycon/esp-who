@@ -39,6 +39,7 @@
 #include "nvs.h"
 #include "common.h"
 #include "i2c_example_main.h"
+#include "adc1_example_main.h"
 
 #define ECHO_TEST_TXD   (GPIO_NUM_1)
 #define ECHO_TEST_RXD   (GPIO_NUM_3)
@@ -322,6 +323,7 @@ void app_main()
 
     led_gpio_init();
     i2c_app_init();
+    adc_app_main_init();
     /* add by liuwenjian 2020-3-4 begin */
     /* 设备信息初始化 */
     init_para(false);
