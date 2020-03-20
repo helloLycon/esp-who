@@ -179,13 +179,24 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
     return ESP_OK;
 }
 
+const char *versionToUpgradeUrl(const char *version, char *upgradeUrl) {
+    int verNum = atoi(strchr(version, '_') + 1) + 1;
+    sprintf(upgradeUrl, "http://60.190.82.250:8002/camera_%d.bin", verNum);
+    return upgradeUrl;
+}
+
 void simple_ota_example_task(void *pvParameter)
 {
+    char upgradeUrl[80];
+    const char *version = "camera_1";
 //    ESP_LOGI(TAG, "Starting OTA example");
 
+    versionToUpgradeUrl(version, upgradeUrl);
+    printf("|---------------------ver: %s---------------------|\n", version);
+    printf("upgrade url: %s\n", upgradeUrl);
 //    printf("file:%s, line:%d, begin config\r\n", __FILE__, __LINE__);
     esp_http_client_config_t config = {
-        .url = CONFIG_EXAMPLE_FIRMWARE_UPGRADE_URL,
+        .url = upgradeUrl,
         .cert_pem = (char *)server_cert_pem_start,
         .event_handler = _http_event_handler,
     };
