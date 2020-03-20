@@ -256,6 +256,24 @@ static void echo_task(void *arg)
 }
 /* add by liuwenjian 2020-3-4 end */
 
+int led_gpio_init(void) {
+    gpio_config_t io_conf;
+    //disable interrupt
+    io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
+    //set as output mode
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    //bit mask of the pins that you want to set,e.g.GPIO18/19
+    io_conf.pin_bit_mask = (1ULL<<15);
+    //disable pull-down mode
+    io_conf.pull_down_en = 0;
+    //disable pull-up mode
+    io_conf.pull_up_en = 0;
+    //configure GPIO with the given settings
+    gpio_config(&io_conf);
+    gpio_set_level(15, 0);
+    return 0;
+}
+
 void app_main()
 {
     int count = 0;
@@ -302,6 +320,7 @@ void app_main()
         err = nvs_flash_init();
     }
 
+    led_gpio_init();
     i2c_app_init();
     /* add by liuwenjian 2020-3-4 begin */
     /* 设备信息初始化 */

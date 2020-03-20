@@ -643,6 +643,7 @@ void app_camera_main ()
             ESP_LOGE(TAG, "Camera init failed with error 0x%x, retry", err);
             vTaskDelay(300 / portTICK_PERIOD_MS);
         } else {
+            gpio_set_level(15, 1);
             ESP_LOGI(TAG, "Camera init succeed");
             break;
         }
