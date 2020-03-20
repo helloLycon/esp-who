@@ -224,8 +224,8 @@ static void echo_task(void *arg)
             fallingTickCount = 0;
             printf("=> rising edge\n");
         }
-        else if( strstr(data, WAKE_UP_FROM_KEY) ) {
-            printf("=> wake up from key\n");
+        else if( strstr(data, KEY_WKUP_PIN_RISING) ) {
+            printf("=> user key\n");
             max_sleep_uptime = 60*2;
         }
         else if(strstr(data, REC_STATUS)) {

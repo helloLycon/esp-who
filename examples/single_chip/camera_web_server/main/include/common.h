@@ -21,12 +21,12 @@
 #define CORE_SHUT_DOWN_OK    "~coreboard_shutdown_ok"       //核心板关机完成
 #define IR_WKUP_PIN_RISING   "~ir_wkup_pin_rising"              //唤醒脚上升沿，有人移动
 #define IR_WKUP_PIN_FALLING  "~ir_wkup_pin_falling"            //唤醒脚下降沿，没人移动
-#define WAKE_UP_FROM_KEY     "~wkup_from_key"            //按键唤醒
 #define SET_IR_VOLTAGE       "~set_ir_voltage="             //配置红外灯控制电压阀值
 #define SET_IR_VOLTAGE_SUC   "~set_ir_voltage_suc"
 #define SET_IR_VOLTAGE_FAIL  "~set_ir_voltage_fail"
 #define GET_STATUS    "~get_status"                           //获取状态
 #define REC_STATUS  "~rec_status="                          //返回状态~status=唤醒来源，移动侦测io状态，~rec_status=key(ir),high(low)
+#define KEY_WKUP_PIN_RISING  "~key_wkup_pin_rising"    //按键唤醒脚上升沿，有按键事件
 
 
 #define TCP_PORT            10086               //统一的端口号，包括TCP客户端或者服务端
