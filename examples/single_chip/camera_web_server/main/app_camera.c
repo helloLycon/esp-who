@@ -510,6 +510,15 @@ static void recv_data_task(void *pvParameter)
     vTaskDelete(NULL);
 }
 
+static void flash_led(void) {
+    for (int i=0; i<3;i++) {
+        vTaskDelay(50 / portTICK_PERIOD_MS);
+        gpio_set_level(15, 0);
+        vTaskDelay(50 / portTICK_PERIOD_MS);
+        gpio_set_level(15, 1);
+    }
+}
+
 /* 队列读取图片并发送出去 */
 static void send_queue_pic_task(void *pvParameter)
 {
@@ -529,6 +538,7 @@ static void send_queue_pic_task(void *pvParameter)
             }
             /* send over: okay */
             printf("======send over========\r\n");
+            flash_led();
             g_pic_send_over = TRUE;
             if( max_sleep_uptime == DEF_MAX_SLEEP_TIME ) {
                 upgrade_block();
