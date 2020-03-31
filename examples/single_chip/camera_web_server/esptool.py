@@ -1,0 +1,1 @@
+../../../esp-idf/components/esptool_py/esptool/esptool.py
