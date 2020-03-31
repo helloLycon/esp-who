@@ -1,7 +1,7 @@
 *.si4project/
 build
 
-sdkconfig
+#sdkconfig
 sdkconfig.old
 .DS_Store
 
