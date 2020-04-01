@@ -47,12 +47,11 @@
 #define ECHO_TEST_CTS   (UART_PIN_NO_CHANGE)
 #define BUF_SIZE        (256)
 
-unsigned char g_camera_over = FALSE;
+bool g_camera_over = false;
 unsigned char g_pic_send_over = FALSE;
 unsigned char g_update_flag = FALSE;
 init_info g_init_data;
 
-bool noManFlag = false;
 int max_sleep_uptime = DEF_MAX_SLEEP_TIME;
 
 void nop(void) {
@@ -193,9 +192,9 @@ static void echo_task(void *arg)
         int len = uart_read_bytes(ECHO_UART_NUM, (uint8_t *)data, BUF_SIZE, 20 / portTICK_RATE_MS);
 
         /* 观察是否超时(无人) */
-        if( noManFlag!=true && fallingTickCount && ( (xTaskGetTickCount() - fallingTickCount) > (3*configTICK_RATE_HZ))) {
+        if( g_camera_over!=true && fallingTickCount && ( (xTaskGetTickCount() - fallingTickCount) > (3*configTICK_RATE_HZ))) {
             printf("=> falling edge time out\n");
-            noManFlag = true;
+            g_camera_over = true;
         }
         
         //printf("%d\n", xTaskGetTickCount());

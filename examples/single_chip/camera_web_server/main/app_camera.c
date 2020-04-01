@@ -238,10 +238,6 @@ void pic_out_queue()
         return ;
     }
 
-    if(noManFlag) {
-        goto skip_send;
-    }
-
     //printf("file:%s, line:%d, send_pic = %p, next = %p, len = %d\r\n", 
     //    __FILE__, __LINE__, send_pic, send_pic->next, send_pic->pic_len);
     ret = send_jpeg(send_pic);
@@ -251,7 +247,6 @@ void pic_out_queue()
         return ;
     }
 
-skip_send:
     g_pic_queue_head = g_pic_queue_head->next;
     if (NULL == g_pic_queue_head)
     {
@@ -396,7 +391,7 @@ static esp_err_t stream_send()
     cur_time = old_time = time(NULL);
     printf("file:%s, line:%d, begin while, cur_time = %d\r\n", __FILE__, __LINE__, cur_time);
     ESP_LOGI(TAG, "<---------START CAPTURE--------->");
-    while (false == noManFlag)
+    while (false == g_camera_over)
     {
         fb = esp_camera_fb_get();
     
@@ -426,16 +421,16 @@ static esp_err_t stream_send()
 //                    printf("file:%s, line:%d, fb->len = %d, time = %ld\r\n", 
 //                        __FILE__, __LINE__, fb->len, time(NULL));
                     /* 图片入队列 */
-                    if(false == noManFlag) {
+                    if(false == g_camera_over) {
                         pic_in_queue(fb->len, fb->buf);
                     }
 //                    send_jpeg(fb->len, fb->buf);
                     cur_time = xTaskGetTickCount();
-                    if ((cur_time - old_time > (CAMERA_VIDEO_TIME*configTICK_RATE_HZ) ) && (FALSE == g_camera_over))
+                    if ((cur_time - old_time > (CAMERA_VIDEO_TIME*configTICK_RATE_HZ) ) && (false == g_camera_over))
                     {
                         /* 超时结束录制 */
                         printf("file:%s, line:%d, camera over, cur_time = %d\r\n", __FILE__, __LINE__, cur_time);
-                        g_camera_over = TRUE;
+                        g_camera_over = true;
                         break;
                     }
 /*                    ptr = (uint8_t *)malloc(fb->len);
@@ -477,6 +472,7 @@ static esp_err_t stream_send()
 static void get_camera_data_task(void *pvParameter)
 {
     stream_send();
+    ESP_LOGI(TAG, "delete thread get_camera_data_task!");
     vTaskDelete(NULL);
 }
 
@@ -557,7 +553,7 @@ static void send_queue_pic_task(void *pvParameter)
 
     while (true)
     {
-        if (noManFlag || ((NULL == g_pic_queue_head)&&(TRUE == g_camera_over)) )
+        if ((NULL == g_pic_queue_head)&&(true == g_camera_over)) 
         {
 //            printf("file:%s, line:%d, send over\r\n", __FILE__, __LINE__);
             ret = send_jpeg(NULL);
@@ -580,14 +576,14 @@ static void send_queue_pic_task(void *pvParameter)
         }
         else if (NULL != g_pic_queue_head)
         {
-            if ((NULL != g_pic_queue_head->next) || (TRUE == g_camera_over))
+            if ((NULL != g_pic_queue_head->next) || (true == g_camera_over))
             {
                 pic_out_queue();
             }
         }
         else
         {
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            vTaskDelay(200 / portTICK_PERIOD_MS);
         }
     }
 
