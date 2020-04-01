@@ -50,6 +50,18 @@ static void print_char_val_type(esp_adc_cal_value_t val_type)
     }
 }
 
+static int voltage_to_percent(int voltage_in_mV) {
+    /* 0%: 3300mV/2, 100%: 4200mV/2 */
+    if(voltage_in_mV<=3300/2) {
+        return 0;
+    }
+    if(voltage_in_mV>=4200/2) {
+        return 100;
+    }
+    /* (v*2-3300)/900*100 */
+    return (voltage_in_mV*200-330000)/900;
+}
+
 int  adc_read_battery_percent(void) {
     uint32_t adc_reading = 0;
     //Multisampling
@@ -65,8 +77,9 @@ int  adc_read_battery_percent(void) {
     adc_reading /= NO_OF_SAMPLES;
     //Convert adc_reading to voltage in mV
     uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_reading, adc_chars);
-    printf("-----Raw: %d\tVoltage: %dmV percent=%d%%\n", adc_reading, voltage, (voltage*200-330000)/900);
-    return (voltage*200-330000)/900;
+    int percent = voltage_to_percent(voltage);
+    printf("-----Raw: %d\tVoltage: %dmV percent=%d%%\n", adc_reading, voltage, percent);
+    return percent;
 }
 
 void adc_app_main_init(void)

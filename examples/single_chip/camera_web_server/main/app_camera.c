@@ -361,7 +361,9 @@ static esp_err_t stream_send()
     esp_err_t res = ESP_OK;
     size_t _jpg_buf_len = 0;
     uint8_t *_jpg_buf = NULL;
-    time_t old_time, cur_time;
+    uint32_t old_time, cur_time;
+
+#if 0
 //    uint8_t *ptr = NULL;
 //    char *part_buf[64];
     printf("file:%s, line:%d, begin esp_wait_sntp_sync\r\n", __FILE__, __LINE__);
@@ -388,10 +390,12 @@ static esp_err_t stream_send()
     isStreaming = true;
 #endif
 
+#endif
     /* modify by liuwenjian 2020-3-4 begin */
     /* 录像计时 */
     cur_time = old_time = time(NULL);
-    printf("file:%s, line:%d, begin while, cur_time = %ld\r\n", __FILE__, __LINE__, cur_time);
+    printf("file:%s, line:%d, begin while, cur_time = %d\r\n", __FILE__, __LINE__, cur_time);
+    ESP_LOGI(TAG, "<---------START CAPTURE--------->");
     while (false == noManFlag)
     {
         fb = esp_camera_fb_get();
@@ -426,11 +430,11 @@ static esp_err_t stream_send()
                         pic_in_queue(fb->len, fb->buf);
                     }
 //                    send_jpeg(fb->len, fb->buf);
-                    cur_time = time(NULL);
-                    if ((cur_time - old_time > CAMERA_VIDEO_TIME) && (FALSE == g_camera_over))
+                    cur_time = xTaskGetTickCount();
+                    if ((cur_time - old_time > (CAMERA_VIDEO_TIME*configTICK_RATE_HZ) ) && (FALSE == g_camera_over))
                     {
                         /* 超时结束录制 */
-                        printf("file:%s, line:%d, camera over, cur_time = %ld\r\n", __FILE__, __LINE__, cur_time);
+                        printf("file:%s, line:%d, camera over, cur_time = %d\r\n", __FILE__, __LINE__, cur_time);
                         g_camera_over = TRUE;
                         break;
                     }
@@ -524,6 +528,33 @@ static void send_queue_pic_task(void *pvParameter)
 {
     int ret;
     extern int max_sleep_uptime;
+    extern unsigned char is_connect;
+    char timeStr[32];
+    time_t timeValue;
+    struct tm tmValue, rtcValue;
+    uint8_t reg[8];
+    printf("file:%s, line:%d, begin esp_wait_sntp_sync\r\n", __FILE__, __LINE__);
+
+    /* 用于时间同步 */
+    //printf("skip esp_wait_sntp_sync.....\n");
+    while( !is_connect ) {
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+    esp_wait_sntp_sync();
+    time(&timeValue);
+    localtime_r(&timeValue, &tmValue);
+    pcf8563RtcRead(I2C_RTC_MASTER_NUM, reg);
+    pcf8563RtcToString(reg, timeStr);
+    printf("==> rtc: %s\r\n", timeStr);
+    pcf8563RtcWrite(I2C_RTC_MASTER_NUM, &tmValue);
+    printf("file:%s, line:%d, ---->(%d-%02d-%02d %02d:%02d:%02d)\r\n", __FILE__, __LINE__, tmValue.tm_year+1900, tmValue.tm_mon+1, tmValue.tm_mday, tmValue.tm_hour, tmValue.tm_min, tmValue.tm_sec);
+
+    //    int64_t test_frame = 0;
+    g_init_data.start_time = time(NULL);
+
+    /* 用于发送心跳包 */
+    send_heartbeat_packet();
+
     while (true)
     {
         if (noManFlag || ((NULL == g_pic_queue_head)&&(TRUE == g_camera_over)) )
@@ -647,6 +678,7 @@ void app_camera_main ()
 
     int retry;
     esp_err_t err;
+    led_gpio_init();
     for (retry = 0; retry<3; retry++) {
         err = esp_camera_init(&config);
         if (err != ESP_OK)
@@ -688,10 +720,12 @@ void app_camera_main ()
 //    printf("file:%s, line:%d, begin get_camera_data_task, time = %ld\r\n", __FILE__, __LINE__, time(NULL));
     /* add by liuwenjian 2020-3-4 begin */
     /* 创建任务摄像头开始录制 */
-    xTaskCreate(&get_camera_data_task, "get_camera_data_task", 8192, NULL, 5, NULL);
+    xTaskCreate(&get_camera_data_task, "get_camera_data_task", 8192, NULL, 4, NULL);
 //    printf("file:%s, line:%d, begin recv_data_task\r\n", __FILE__, __LINE__);
 //    xTaskCreate(&recv_data_task, "recv_data_task", 8192, NULL, 5, NULL);
     /* 创建任务发送图片 */
+    i2c_app_init();
+    adc_app_main_init();
     xTaskCreate(&send_queue_pic_task, "send_queue_pic_task", 8192, NULL, 5, NULL);
     /* add by liuwenjian 2020-3-4 end */
 

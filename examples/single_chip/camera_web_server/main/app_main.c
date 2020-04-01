@@ -281,6 +281,7 @@ void app_main()
 //    char *buff;
 //    size_t total = 0, used = 0;
 
+#if  0
     /* add by liuwenjian 2020-3-4 begin */
     /* 深度睡眠唤醒 */
     switch (esp_sleep_get_wakeup_cause())
@@ -311,7 +312,7 @@ void app_main()
             printf("file:%s, line:%d, Not a deep sleep reset\n", __FILE__, __LINE__);
     }
     /* add by liuwenjian 2020-3-4 end */
-
+#endif
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
@@ -321,13 +322,12 @@ void app_main()
         err = nvs_flash_init();
     }
 
-    led_gpio_init();
-    i2c_app_init();
-    adc_app_main_init();
-    /* add by liuwenjian 2020-3-4 begin */
     /* 设备信息初始化 */
     init_para(false);
-    /* add by liuwenjian 2020-3-4 end */
+
+    /* 提前拍摄 */
+    app_camera_main();
+
 
 /*    buff = (char *)heap_caps_malloc(3 * 1024 * 1024, MALLOC_CAP_SPIRAM);
     if (NULL == buff)
@@ -347,7 +347,6 @@ void app_main()
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }*/
     
-    app_camera_main();
     app_httpd_main();
 
     /* add by liuwenjian 2020-3-4 begin */

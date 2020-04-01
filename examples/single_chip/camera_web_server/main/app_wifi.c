@@ -52,7 +52,7 @@ extern const uint8_t server_cert_pem_start[] asm("_binary_ca_cert_pem_start");
 extern const uint8_t server_cert_pem_end[] asm("_binary_ca_cert_pem_end");
 
 static int s_retry_num = 0;
-static unsigned char is_connect = FALSE;
+unsigned char is_connect = FALSE;
 
 static esp_err_t event_handler(void *ctx, system_event_t *event)
 {

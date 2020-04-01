@@ -67,6 +67,7 @@ extern init_info g_init_data;
 extern bool noManFlag;
 
 void upgrade_block(void) ;
+int led_gpio_init(void);
 
 
 #endif
