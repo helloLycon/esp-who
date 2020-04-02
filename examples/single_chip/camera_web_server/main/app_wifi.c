@@ -187,6 +187,12 @@ const char *versionToUpgradeUrl(const char *version, char *upgradeUrl) {
     sprintf(upgradeUrl, "http://60.190.82.250:8002/camera_%d.bin", verNum);
     return upgradeUrl;
 }
+
+const char *makeMcuUpgradeUrl(char *upgradeUrl) {
+    strcpy(strrchr(upgradeUrl, '/')+1, "camera_mcu.bin");
+    return upgradeUrl;
+}
+
 static void http_cleanup(esp_http_client_handle_t client)
 {
     esp_http_client_close(client);
@@ -195,6 +201,8 @@ static void http_cleanup(esp_http_client_handle_t client)
 
 static esp_err_t airbat_esp_https_ota(const esp_http_client_config_t *config)
 {
+    const int isMcuUpgrade = (strstr(config->url, "mcu")!=NULL);
+    ESP_LOGI(TAG, "begin mcu upgrade");
     if (!config) {
         ESP_LOGE(TAG, "esp_http_client config not found");
         return ESP_ERR_INVALID_ARG;
@@ -231,24 +239,26 @@ static esp_err_t airbat_esp_https_ota(const esp_http_client_config_t *config)
     esp_ota_handle_t update_handle = 0;
     const esp_partition_t *update_partition = NULL;
     ESP_LOGI(TAG, "Starting OTA...");
-    update_partition = esp_ota_get_next_update_partition(NULL);
-    if (update_partition == NULL) {
-        ESP_LOGE(TAG, "Passive OTA partition not found");
-        http_cleanup(client);
-        return ESP_FAIL;
-    }
-    ESP_LOGI(TAG, "Writing to partition subtype %d at offset 0x%x",
-             update_partition->subtype, update_partition->address);
 
-    err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &update_handle);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "esp_ota_begin failed, error=%d", err);
-        http_cleanup(client);
-        return err;
-    }
-    ESP_LOGI(TAG, "esp_ota_begin succeeded");
-    ESP_LOGI(TAG, "Please Wait. This may take time");
+    if(!isMcuUpgrade) {
+        update_partition = esp_ota_get_next_update_partition(NULL);
+        if (update_partition == NULL) {
+            ESP_LOGE(TAG, "Passive OTA partition not found");
+            http_cleanup(client);
+            return ESP_FAIL;
+        }
+        ESP_LOGI(TAG, "Writing to partition subtype %d at offset 0x%x",
+                 update_partition->subtype, update_partition->address);
 
+        err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &update_handle);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "esp_ota_begin failed, error=%d", err);
+            http_cleanup(client);
+            return err;
+        }
+        ESP_LOGI(TAG, "esp_ota_begin succeeded");
+        ESP_LOGI(TAG, "Please Wait. This may take time");
+    }
     esp_err_t ota_write_err = ESP_OK;
     const int alloc_size = (config->buffer_size > 0) ? config->buffer_size : DEFAULT_OTA_BUF_SIZE;
     char *upgrade_data_buf = (char *)malloc(alloc_size);
@@ -258,6 +268,16 @@ static esp_err_t airbat_esp_https_ota(const esp_http_client_config_t *config)
     }
 
     int binary_file_len = 0;
+
+    /* 10k buffer for MCU bin file */
+    char *mcuUpgradeBuf = NULL;
+    if(isMcuUpgrade) {
+        mcuUpgradeBuf = (char *)malloc(10*1024);
+        if (!mcuUpgradeBuf) {
+            ESP_LOGE(TAG, "Couldn't allocate memory to MCU upgrade data buffer");
+            return ESP_ERR_NO_MEM;
+        }
+    }
     while (1) {
         int data_read = esp_http_client_read(client, upgrade_data_buf, alloc_size);
         if (data_read == 0) {
@@ -269,17 +289,29 @@ static esp_err_t airbat_esp_https_ota(const esp_http_client_config_t *config)
             break;
         }
         if (data_read > 0) {
-            ota_write_err = esp_ota_write(update_handle, (const void *) upgrade_data_buf, data_read);
-            if (ota_write_err != ESP_OK) {
-                break;
+            if(isMcuUpgrade) {
+                memcpy(mcuUpgradeBuf + binary_file_len, upgrade_data_buf, data_read);
+            } else {
+                ota_write_err = esp_ota_write(update_handle, (const void *) upgrade_data_buf, data_read);
+                if (ota_write_err != ESP_OK) {
+                    break;
+                }
             }
             binary_file_len += data_read;
             ESP_LOGD(TAG, "Written image length %d", binary_file_len);
         }
     }
     free(upgrade_data_buf);
+    if(mcuUpgradeBuf) {
+        free(mcuUpgradeBuf);
+    }
     http_cleanup(client); 
-    ESP_LOGD(TAG, "Total binary data length writen: %d", binary_file_len);
+    ESP_LOGI(TAG, "Total binary data length writen: %d", binary_file_len);
+
+    if(isMcuUpgrade) {
+        ESP_LOGI(TAG, "finish mcu upgrade");
+        return ESP_OK;
+    }
     
     esp_err_t ota_end_err = esp_ota_end(update_handle);
     if (ota_write_err != ESP_OK) {
@@ -308,7 +340,6 @@ void simple_ota_example_task(void *pvParameter)
 
     versionToUpgradeUrl(version, upgradeUrl);
     printf("|---------------------ver: %s---------------------|\n", version);
-    printf("upgrade url: %s\n", upgradeUrl);
 //    printf("file:%s, line:%d, begin config\r\n", __FILE__, __LINE__);
     esp_http_client_config_t config = {
         .url = upgradeUrl,
@@ -318,11 +349,12 @@ void simple_ota_example_task(void *pvParameter)
 
     while (FALSE == is_connect)
     {
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 
 //    printf("file:%s, line:%d, begin esp_https_ota\r\n", __FILE__, __LINE__);
     g_update_flag = TRUE;
+    printf("upgrade url: %s\n", upgradeUrl);
     esp_err_t ret = airbat_esp_https_ota(&config);
 //    printf("file:%s, line:%d, begin esp_https_ota, ret = %d\r\n", __FILE__, __LINE__, ret);
     if (ret == ESP_OK)
@@ -331,14 +363,19 @@ void simple_ota_example_task(void *pvParameter)
     }
     else 
     {
+        makeMcuUpgradeUrl(upgradeUrl);
+        printf("upgrade url: %s\n", upgradeUrl);
+        ret = airbat_esp_https_ota(&config);
+
+        /* mcu升级是否成功都结束 */
+        if(ESP_OK == ret) {
+            printf("Upgrade mcu OKAY~~~~~\n");
+        } else {
+            ESP_LOGE(TAG, "No Upgrade Executed or Upgrade Failed\n");
+        }
         g_update_flag = FALSE;
-        ESP_LOGE(TAG, "Firmware upgrade failed");
     }
-    
-    while (1)
-    {
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
+    vTaskDelete(NULL);
 }
 /* add by liuwenjian 2020-3-4 end */
 
