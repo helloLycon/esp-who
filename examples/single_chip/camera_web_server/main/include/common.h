@@ -1,6 +1,9 @@
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
 #define DEVICE_ID_FLAG      "device_id"
 #define SERVICE_IP_FLAG     "service_ip"
 #define SERVICE_PORT_FLAG   "service_port"

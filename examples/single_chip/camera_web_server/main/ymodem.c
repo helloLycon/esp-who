@@ -35,18 +35,10 @@
 #include "rom/crc.h"
 #include "driver/gpio.h"
 #include <driver/uart.h>
-#include "spiffs_vfs.h"
 
 
 //----------------------------------
 static void IRAM_ATTR LED_toggle() {
-#if YMODEM_LED_ACT
-	if (GPIO.out & (1 << YMODEM_LED_ACT)) {
-		GPIO.out_w1tc = (1 << YMODEM_LED_ACT);
-	} else {
-		GPIO.out_w1ts = (1 << YMODEM_LED_ACT);
-	}
-#endif
 }
 
 //------------------------------------------------------------------------

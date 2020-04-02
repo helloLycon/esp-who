@@ -31,9 +31,10 @@
 #define __YMODEM_H__
 
 #include <stdint.h>
+#include "common.h"
 
 // === UART DEFINES ====
-#define EX_UART_NUM UART_NUM_0
+#define EX_UART_NUM ECHO_UART_NUM
 #define BUF_SIZE (1080)
 
 // === LED pin used to show transfer activity ===
