@@ -144,7 +144,7 @@ void init_para(bool erase_all)
         fix = true;
         strcpy(g_init_data.config_data.wifi_ap_key, EXAMPLE_ESP_WIFI_AP_PASS);
     }
-    if(g_init_data.config_data.ir_voltage <= 0 || g_init_data.config_data.ir_voltage > 3000) {
+    if(g_init_data.config_data.ir_voltage <= 0 || g_init_data.config_data.ir_voltage > 10000) {
         fix = true;
         g_init_data.config_data.ir_voltage = IR_VOL_UNSET;
     }
