@@ -200,10 +200,14 @@ static void echo_task(void *arg)
         }
         /* 检查wifi连接 */
         if( xTaskGetTickCount() >= (10*configTICK_RATE_HZ)) {
-            if(FALSE == is_connect && max_sleep_uptime==DEF_MAX_SLEEP_TIME) {
+            static bool oneTime = false;
+            /* 未连接，无用户设置，只执行一次 */
+            if(FALSE == is_connect && max_sleep_uptime==DEF_MAX_SLEEP_TIME && oneTime == false) {
                 printf("=-> NO WIFI, send shutdown request\n");
                 uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
-                vTaskDelay(1000 / portTICK_PERIOD_MS);
+                oneTime = true;
+                continue;
+                //vTaskDelay(1000 / portTICK_PERIOD_MS);
             }
         }
 
