@@ -37,6 +37,16 @@
 #include <driver/uart.h>
 
 
+void ym_uart_write_bytes(uart_port_t uart_num, const char* src, size_t size) {
+    const char *head = "^^^^^";
+    const char *tail = "$$$$$";
+    uart_write_bytes(uart_num, head, strlen(head));
+    uart_write_bytes(uart_num, src, size);
+    uart_write_bytes(uart_num, tail, strlen(tail));
+}
+
+
+
 //----------------------------------
 static void IRAM_ATTR LED_toggle() {
 }
@@ -79,7 +89,7 @@ static void uart_consume()
 //--------------------------------
 static uint32_t Send_Byte (char c)
 {
-  uart_write_bytes(EX_UART_NUM, &c, 1);
+  ym_uart_write_bytes(EX_UART_NUM, &c, 1);
   return 0;
 }
 
@@ -372,6 +382,7 @@ static void Ymodem_PrepareIntialPacket(uint8_t *data, char *fileName, uint32_t l
   
   // add crc
   tempCRC = crc16(&data[PACKET_HEADER], PACKET_SIZE);
+  printf("crc = %#x\n", tempCRC);
   data[PACKET_SIZE + PACKET_HEADER] = tempCRC >> 8;
   data[PACKET_SIZE + PACKET_HEADER + 1] = tempCRC & 0xFF;
 }
@@ -418,6 +429,34 @@ static void Ymodem_PreparePacket(uint8_t *data, uint8_t pktNo, uint32_t sizeBlk,
   data[PACKET_1K_SIZE + PACKET_HEADER + 1] = tempCRC & 0xFF;
 }
 
+//-----------------------------------------------------------------------------------------
+static void Ymodem_PreparePacketFromMem(uint8_t *data, uint8_t pktNo, uint32_t sizeBlk, const void *upgradeBin)
+{
+  uint16_t i, size;
+  uint16_t tempCRC;
+  
+  data[0] = STX;
+  data[1] = (pktNo & 0x000000ff);
+  data[2] = (~(pktNo & 0x000000ff));
+
+  size = sizeBlk < PACKET_1K_SIZE ? sizeBlk :PACKET_1K_SIZE;
+  // Read block from file
+  if (size > 0) {
+	  //size = fread(data + PACKET_HEADER, 1, size, ffd);
+	  memcpy(data + PACKET_HEADER, upgradeBin, size);
+  }
+
+  if ( size  < PACKET_1K_SIZE) {
+    for (i = size + PACKET_HEADER; i < PACKET_1K_SIZE + PACKET_HEADER; i++) {
+      data[i] = 0x00; // EOF (0x1A) or 0x00
+    }
+  }
+  tempCRC = crc16(&data[PACKET_HEADER], PACKET_1K_SIZE);
+  //tempCRC = crc16_le(0, &data[PACKET_HEADER], PACKET_1K_SIZE);
+  data[PACKET_1K_SIZE + PACKET_HEADER] = tempCRC >> 8;
+  data[PACKET_1K_SIZE + PACKET_HEADER + 1] = tempCRC & 0xFF;
+}
+
 //-------------------------------------------------------------
 static uint8_t Ymodem_WaitResponse(uint8_t ackchr, uint8_t tmo)
 {
@@ -426,6 +465,7 @@ static uint8_t Ymodem_WaitResponse(uint8_t ackchr, uint8_t tmo)
 
   do {
     if (Receive_Byte(&receivedC, NAK_TIMEOUT) == 0) {
+      printf("recv: %c\n", receivedC);
       if (receivedC == ackchr) {
         return 1;
       }
@@ -447,9 +487,35 @@ static uint8_t Ymodem_WaitResponse(uint8_t ackchr, uint8_t tmo)
   return 0;
 }
 
+int sendCRC16AndWaitForOneChar(bool send, unsigned char c) {
+    int err = 0;
+    for(int loop=0; ; loop++) {
+        unsigned char receivedC;
+        do {
+          if(send) {
+             Send_Byte(CRC16);
+          }
+          LED_toggle();
+        } while (Receive_Byte(&receivedC, NAK_TIMEOUT) < 0 && err++ < 45);
+        printf("line %d recv = %#x(%c)\n", __LINE__, receivedC,receivedC);
+    
+        if (err >= 45 /*|| receivedC != CRC16*/) {
+          send_CA();
+          return -1;
+        }
+        else if(receivedC == c) {
+          printf("%#x(%c) recv ok!\n", c,c);
+          break;
+        }
+        else {
+          /* go on */
+        }
+    }
+    return 1;
+}
 
 //------------------------------------------------------------------------
-int Ymodem_Transmit (char* sendFileName, unsigned int sizeFile, FILE *ffd)
+int Ymodem_Transmit (char* sendFileName, unsigned int sizeFile, const void *upgradeSrc)
 {
   uint8_t packet_data[PACKET_1K_SIZE + PACKET_OVERHEAD];
   uint16_t blkNumber;
@@ -457,17 +523,13 @@ int Ymodem_Transmit (char* sendFileName, unsigned int sizeFile, FILE *ffd)
   int i, err;
   uint32_t size = 0;
 
+  printf("line %d\n", __LINE__);
   // Wait for response from receiver
   err = 0;
-  do {
-    Send_Byte(CRC16);
-    LED_toggle();
-  } while (Receive_Byte(&receivedC, NAK_TIMEOUT) < 0 && err++ < 45);
+  printf("line %d\n", __LINE__);
 
-  if (err >= 45 || receivedC != CRC16) {
-    send_CA();
-    return -1;
-  }
+  err = sendCRC16AndWaitForOneChar(false, CRC16);
+  printf("line %d CRC16 received\n", __LINE__);
   
   // === Prepare first block and send it =======================================
   /* When the receiving program receives this block and successfully
@@ -475,27 +537,40 @@ int Ymodem_Transmit (char* sendFileName, unsigned int sizeFile, FILE *ffd)
    * character and then proceed with a normal YMODEM file transfer
    * beginning with a "C" or NAK tranmsitted by the receiver.
    */
+  printf("line %d\n", __LINE__);
   Ymodem_PrepareIntialPacket(packet_data, sendFileName, sizeFile);
+  printf("line %d\n", __LINE__);
   do 
   {
+    printf("line %d\n", __LINE__);
     // Send Packet
-	uart_write_bytes(EX_UART_NUM, (char *)packet_data, PACKET_SIZE + PACKET_OVERHEAD);
+	ym_uart_write_bytes(EX_UART_NUM, (char *)packet_data, PACKET_SIZE + PACKET_OVERHEAD);
+    printf("line %d\n", __LINE__);
 
 	// Wait for Ack
+    printf("line %d\n", __LINE__);
     err = Ymodem_WaitResponse(ACK, 10);
+    //err = sendCRC16AndWaitForOneChar(false, ACK);
+    printf("line %d\n", __LINE__);
     if (err == 0 || err == 4) {
+        printf("line %d\n", __LINE__);
       send_CA();
+      printf("line %d\n", __LINE__);
       return -2;                  // timeout or wrong response
     }
     else if (err == 2) return 98; // abort
     LED_toggle();
+    printf("line %d\n", __LINE__);
   }while (err != 1);
+  printf("line %d initial packet 1!\n", __LINE__);
 
   // After initial block the receiver sends 'C' after ACK
   if (Ymodem_WaitResponse(CRC16, 10) != 1) {
+    printf("line %d\n", __LINE__);
     send_CA();
     return -3;
   }
+  printf("line %d initial packet okay!\n", __LINE__);
   
   // === Send file blocks ======================================================
   size = sizeFile;
@@ -505,10 +580,12 @@ int Ymodem_Transmit (char* sendFileName, unsigned int sizeFile, FILE *ffd)
   while (size)
   {
     // Prepare and send next packet
-    Ymodem_PreparePacket(packet_data, blkNumber, size, ffd);
+    Ymodem_PreparePacketFromMem(packet_data, blkNumber, size, upgradeSrc);
+    upgradeSrc = (const void *)( (const char*)upgradeSrc + PACKET_1K_SIZE );
     do
     {
-      uart_write_bytes(EX_UART_NUM, (char *)packet_data, PACKET_1K_SIZE + PACKET_OVERHEAD);
+      printf("%dth packet\n", blkNumber);
+      ym_uart_write_bytes(EX_UART_NUM, (char *)packet_data, PACKET_1K_SIZE + PACKET_OVERHEAD);
 
       // Wait for Ack
       err = Ymodem_WaitResponse(ACK, 10);
@@ -525,7 +602,8 @@ int Ymodem_Transmit (char* sendFileName, unsigned int sizeFile, FILE *ffd)
     }while(err != 1);
     LED_toggle();
   }
-  
+
+  printf("bin send okay!!!!!!, send EOT...\n");
   // === Send EOT ==============================================================
   Send_Byte(EOT); // Send (EOT)
   // Wait for Ack
@@ -550,11 +628,12 @@ int Ymodem_Transmit (char* sendFileName, unsigned int sizeFile, FILE *ffd)
   }
 
   LED_toggle();
+  printf("send last packet...\n");
   Ymodem_PrepareLastPacket(packet_data);
   do 
   {
 	// Send Packet
-	uart_write_bytes(EX_UART_NUM, (char *)packet_data, PACKET_SIZE + PACKET_OVERHEAD);
+	ym_uart_write_bytes(EX_UART_NUM, (char *)packet_data, PACKET_SIZE + PACKET_OVERHEAD);
 
 	// Wait for Ack
     err = Ymodem_WaitResponse(ACK, 10);
@@ -568,6 +647,9 @@ int Ymodem_Transmit (char* sendFileName, unsigned int sizeFile, FILE *ffd)
   #if YMODEM_LED_ACT
   gpio_set_level(YMODEM_LED_ACT, YMODEM_LED_ACT_ON ^ 1);
   #endif
-  return 0; // file transmitted successfully
+
+  
+  printf("return ESP_OK !!!!!!!!!!!!!!!!!!!!!!!!\n");
+  return ESP_OK; // file transmitted successfully
 }
 

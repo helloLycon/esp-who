@@ -48,6 +48,7 @@
 #define BUF_SIZE        (256)
 
 bool g_camera_over = false;
+bool g_update_mcu = false;
 unsigned char g_pic_send_over = FALSE;
 unsigned char g_update_flag = FALSE;
 init_info g_init_data;
@@ -186,7 +187,7 @@ static void echo_task(void *arg)
 
     uart_write_bytes(ECHO_UART_NUM, GET_STATUS, strlen(GET_STATUS)+1);
 
-    while (1)
+    while (false == g_update_mcu)
     {
         // Read data from the UART
         int len = uart_read_bytes(ECHO_UART_NUM, (uint8_t *)data, BUF_SIZE, 20 / portTICK_RATE_MS);

@@ -25,6 +25,7 @@
 #include <esp_ota_ops.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "driver/uart.h"
 #include "freertos/event_groups.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
@@ -42,6 +43,7 @@
 
 #include "common.h"
 #include "app_wifi.h"
+#include "ymodem.h"
 
 /* The examples use WiFi configuration that you can set via 'make menuconfig'.
 
@@ -199,6 +201,20 @@ static void http_cleanup(esp_http_client_handle_t client)
     esp_http_client_cleanup(client);
 }
 
+static esp_err_t ymodemUpgradeMcu(unsigned int binary_file_len, const void *mcuUpgradeBuf) {
+    char recvBuf[128];
+    const char *upgradeShakehand = "~UPDATE_SMART_PEEPHOLE";
+    ESP_LOGI(TAG, "ymodem upgrade start");
+    //vTaskDelay(1000 / portTICK_PERIOD_MS);
+    for(int i=0; i<3; i++) {
+        int len = uart_read_bytes(ECHO_UART_NUM, (uint8_t *)recvBuf, sizeof(recvBuf), 1000 / portTICK_RATE_MS);
+        recvBuf[len] = 0;
+        printf("recv: %s\n", recvBuf);
+    }
+    uart_write_bytes(EX_UART_NUM, upgradeShakehand, strlen(upgradeShakehand));
+    return Ymodem_Transmit("mcu.bin", binary_file_len, mcuUpgradeBuf);
+}
+
 static esp_err_t airbat_esp_https_ota(const esp_http_client_config_t *config)
 {
     const int isMcuUpgrade = (strstr(config->url, "mcu")!=NULL);
@@ -301,16 +317,18 @@ static esp_err_t airbat_esp_https_ota(const esp_http_client_config_t *config)
             ESP_LOGD(TAG, "Written image length %d", binary_file_len);
         }
     }
-    free(upgrade_data_buf);
-    if(mcuUpgradeBuf) {
-        free(mcuUpgradeBuf);
-    }
-    http_cleanup(client); 
     ESP_LOGI(TAG, "Total binary data length writen: %d", binary_file_len);
+    free(upgrade_data_buf);
+    http_cleanup(client); 
 
-    if(isMcuUpgrade) {
-        ESP_LOGI(TAG, "finish mcu upgrade");
-        return ESP_OK;
+    /* ymodem 升级 */
+    if(mcuUpgradeBuf) {
+        extern bool g_update_mcu;
+        g_update_mcu = true;
+        err = ymodemUpgradeMcu(binary_file_len, mcuUpgradeBuf);
+        free(mcuUpgradeBuf);
+        g_update_mcu = false;
+        return err;
     }
     
     esp_err_t ota_end_err = esp_ota_end(update_handle);
@@ -367,7 +385,7 @@ void simple_ota_example_task(void *pvParameter)
         printf("upgrade url: %s\n", upgradeUrl);
         ret = airbat_esp_https_ota(&config);
 
-        /* mcu升级是否成功都结束 */
+        /* mcu升级是否成功都结�?*/
         if(ESP_OK == ret) {
             printf("Upgrade mcu OKAY~~~~~\n");
         } else {
