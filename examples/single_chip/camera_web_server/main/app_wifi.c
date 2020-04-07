@@ -381,6 +381,7 @@ void simple_ota_example_task(void *pvParameter)
     }
     else 
     {
+#if  0
         makeMcuUpgradeUrl(upgradeUrl);
         printf("upgrade url: %s\n", upgradeUrl);
         ret = airbat_esp_https_ota(&config);
@@ -391,6 +392,7 @@ void simple_ota_example_task(void *pvParameter)
         } else {
             ESP_LOGE(TAG, "No Upgrade Executed or Upgrade Failed\n");
         }
+#endif
         g_update_flag = FALSE;
     }
     vTaskDelete(NULL);
