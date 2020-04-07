@@ -168,6 +168,7 @@ void init_para(bool erase_all)
 
 static void echo_task(void *arg)
 {
+    extern unsigned char is_connect;
     TickType_t fallingTickCount = 0;
     /* Configure parameters of an UART driver,
      * communication pins and install the driver */
@@ -197,7 +198,15 @@ static void echo_task(void *arg)
             printf("=> falling edge time out\n");
             g_camera_over = true;
         }
-        
+        /* ¼ì²éwifiÁ¬½Ó */
+        if( xTaskGetTickCount() >= (10*configTICK_RATE_HZ)) {
+            if(FALSE == is_connect && max_sleep_uptime==DEF_MAX_SLEEP_TIME) {
+                printf("=-> NO WIFI, send shutdown request\n");
+                uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
+            }
+        }
+
         //printf("%d\n", xTaskGetTickCount());
         if((len <= 0) || (data[0] != '~')) {
             continue;
