@@ -284,3 +284,17 @@ void i2c_app_init()
     ESP_ERROR_CHECK(i2c_master_init());
     //xTaskCreate(i2c_test_task, "i2c_test_task_0", 1024 * 2, (void *)0, 10, NULL);
 }
+
+int rtc_read_time(void) {
+    char timeStr[32];
+    uint8_t reg[8];
+    struct tm tmValue;
+    
+    pcf8563RtcRead(I2C_RTC_MASTER_NUM, reg);
+    pcf8563RtcToString(reg, timeStr);
+    printf("==> rtc-read: %s\r\n", timeStr);
+    //pcf8563RtcWrite(I2C_RTC_MASTER_NUM, &tmValue);
+    //printf("file:%s, line:%d, ---->(%d-%02d-%02d %02d:%02d:%02d)\r\n", __FILE__, __LINE__, tmValue.tm_year+1900, tmValue.tm_mon+1, tmValue.tm_mday, tmValue.tm_hour, tmValue.tm_min, tmValue.tm_sec);
+    return 0;
+}
+

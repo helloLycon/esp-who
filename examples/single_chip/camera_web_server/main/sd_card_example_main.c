@@ -10,12 +10,17 @@
 #include <string.h>
 #include <sys/unistd.h>
 #include <sys/stat.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_vfs_fat.h"
 #include "driver/sdmmc_host.h"
 #include "driver/sdspi_host.h"
 #include "sdmmc_cmd.h"
+#include "esp_camera.h"
+#include "app_camera.h"
+#include "esp_sleep.h"
 
 static const char *TAG = "example";
 
@@ -80,7 +85,7 @@ void sdcard_init_main(void)
     // If format_if_mount_failed is set to true, SD card will be partitioned and
     // formatted in case when mounting fails.
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
-        .format_if_mount_failed = false,
+        .format_if_mount_failed = true,
         .max_files = 5,
         .allocation_unit_size = 16 * 1024
     };
@@ -153,3 +158,21 @@ void sdcard_init_main(void)
     esp_vfs_fat_sdmmc_unmount();
     ESP_LOGI(TAG, "Card unmounted");
 }
+
+int sdcard_test(void) {
+    esp_camera_deinit();
+    cam_power_down();
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+    gpio_reset_pin(2);
+    gpio_reset_pin(4);
+    gpio_reset_pin(12);
+    gpio_reset_pin(13);
+    gpio_reset_pin(14);
+    gpio_reset_pin(15);
+    printf("-----------> init sdcard\n");
+    sdcard_init_main();
+    
+    vTaskDelay(1000000 / portTICK_PERIOD_MS);
+    return 0;
+}
+

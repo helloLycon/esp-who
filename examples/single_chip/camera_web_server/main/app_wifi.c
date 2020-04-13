@@ -218,7 +218,7 @@ static esp_err_t ymodemUpgradeMcu(unsigned int binary_file_len, const void *mcuU
 static esp_err_t airbat_esp_https_ota(const esp_http_client_config_t *config)
 {
     const int isMcuUpgrade = (strstr(config->url, "mcu")!=NULL);
-    ESP_LOGI(TAG, "begin mcu upgrade");
+    ESP_LOGI(TAG, "begin esp32/mcu upgrade");
     if (!config) {
         ESP_LOGE(TAG, "esp_http_client config not found");
         return ESP_ERR_INVALID_ARG;

@@ -159,6 +159,7 @@ typedef struct pic_queue
 }pic_queue;
 
 void app_camera_main();
+int cam_power_down(void);
 
 #ifdef __cplusplus
 }

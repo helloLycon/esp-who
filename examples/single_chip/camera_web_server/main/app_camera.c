@@ -41,11 +41,13 @@
 #include "camera_error.h"
 #include "i2c_example_main.h"
 #include "adc1_example_main.h"
+#include "sd_card_example_main.h"
 
 static const char *TAG = "app_camera";
 /* add by liuwenjian 2020-3-4 begin */
 pic_queue *g_pic_queue_head = NULL;
 pic_queue *g_pic_queue_tail = NULL;
+bool g_camera_power = true;
 
 static int send_jpeg(pic_queue *send_pic)
 {
@@ -346,6 +348,22 @@ void send_heartbeat_packet()
 }
 /* add by liuwenjian 2020-3-4 end */
 
+int cam_power_down(void) {
+    for(int i=0; i<3; i++) {
+        printf("send cam_power_down request...\n");
+        uart_write_bytes(ECHO_UART_NUM, CAMERA_POWER_DOWN_REQ, strlen(CAMERA_POWER_DOWN_REQ));
+        for(int wait = 0; wait<20; wait++) {
+            if(g_camera_power == false) {
+                //printf("camera power down OKAY\n");
+                return 0;
+            } else {
+                vTaskDelay(50 / portTICK_PERIOD_MS);
+            }
+        }
+    }
+    return -1;
+}
+
 static esp_err_t stream_send()
 {
     char timeStr[32];
@@ -525,7 +543,6 @@ static void send_queue_pic_task(void *pvParameter)
     int ret;
     extern int max_sleep_uptime;
     extern unsigned char is_connect;
-    char timeStr[32];
     time_t timeValue;
     struct tm tmValue, rtcValue;
     uint8_t reg[8];
@@ -539,11 +556,6 @@ static void send_queue_pic_task(void *pvParameter)
     esp_wait_sntp_sync();
     time(&timeValue);
     localtime_r(&timeValue, &tmValue);
-    pcf8563RtcRead(I2C_RTC_MASTER_NUM, reg);
-    pcf8563RtcToString(reg, timeStr);
-    printf("==> rtc: %s\r\n", timeStr);
-    pcf8563RtcWrite(I2C_RTC_MASTER_NUM, &tmValue);
-    printf("file:%s, line:%d, ---->(%d-%02d-%02d %02d:%02d:%02d)\r\n", __FILE__, __LINE__, tmValue.tm_year+1900, tmValue.tm_mon+1, tmValue.tm_mday, tmValue.tm_hour, tmValue.tm_min, tmValue.tm_sec);
 
     //    int64_t test_frame = 0;
     g_init_data.start_time = time(NULL);
@@ -565,7 +577,8 @@ static void send_queue_pic_task(void *pvParameter)
             }
             /* send over: okay */
             printf("======send over========\r\n");
-            flash_led();
+            //sdcard_test();
+            //flash_led();
             g_pic_send_over = TRUE;
             if( max_sleep_uptime == DEF_MAX_SLEEP_TIME ) {
                 upgrade_block();
@@ -674,7 +687,7 @@ void app_camera_main ()
 
     int retry;
     esp_err_t err;
-    led_gpio_init();
+    //led_gpio_init();
     for (retry = 0; retry<3; retry++) {
         err = esp_camera_init(&config);
         if (err != ESP_OK)
@@ -682,7 +695,7 @@ void app_camera_main ()
             ESP_LOGE(TAG, "Camera init failed with error 0x%x, retry", err);
             vTaskDelay(300 / portTICK_PERIOD_MS);
         } else {
-            gpio_set_level(15, 1);
+            //gpio_set_level(15, 1);
             ESP_LOGI(TAG, "Camera init succeed");
             break;
         }
@@ -720,7 +733,6 @@ void app_camera_main ()
 //    printf("file:%s, line:%d, begin recv_data_task\r\n", __FILE__, __LINE__);
 //    xTaskCreate(&recv_data_task, "recv_data_task", 8192, NULL, 5, NULL);
     /* 创建任务发送图片 */
-    i2c_app_init();
     adc_app_main_init();
     xTaskCreate(&send_queue_pic_task, "send_queue_pic_task", 8192, NULL, 5, NULL);
     /* add by liuwenjian 2020-3-4 end */

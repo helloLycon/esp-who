@@ -40,9 +40,10 @@
 #include "common.h"
 #include "i2c_example_main.h"
 #include "adc1_example_main.h"
+#include "sd_card_example_main.h"
 
 #define ECHO_TEST_TXD   (GPIO_NUM_1)
-#define ECHO_TEST_RXD   (GPIO_NUM_3)
+#define ECHO_TEST_RXD   (GPIO_NUM_35)
 #define ECHO_TEST_RTS   (UART_PIN_NO_CHANGE)
 #define ECHO_TEST_CTS   (UART_PIN_NO_CHANGE)
 #define BUF_SIZE        (256)
@@ -264,6 +265,11 @@ static void echo_task(void *arg)
                 printf("=> ir low level(act as falling edge)\n");
             }
         }
+        else if(strstr(data, CAMERA_POWER_DOWN_OK)) {
+            extern bool g_camera_power;
+            g_camera_power = false;
+            printf("camera power down OKAY\n");
+        }
     }
 
     vTaskDelete(NULL);
@@ -338,6 +344,11 @@ void app_main()
     /* 设备信息初始化 */
     init_para(false);
 
+    i2c_app_init();
+    rtc_read_time();
+    /* test sdcard */
+    //sdcard_init_main();
+    //vTaskDelay(1000000 / portTICK_PERIOD_MS);
     /* 提前拍摄 */
     app_camera_main();
 
