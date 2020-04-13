@@ -510,7 +510,7 @@ static void recv_data_task(void *pvParameter)
     vTaskDelete(NULL);
 }
 
-static void flash_led(void) {
+void flash_led(void) {
     for (int i=0; i<3;i++) {
         vTaskDelay(50 / portTICK_PERIOD_MS);
         gpio_set_level(15, 0);
