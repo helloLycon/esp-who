@@ -334,6 +334,8 @@ void send_heartbeat_packet()
 
     if (ESP_OK == sock_ret)
     {
+        extern void flash_led(int);
+        flash_led(3);
         printf("file:%s, line:%d, begin send_data\r\n", __FILE__, __LINE__);
         ret = send_data(packet_send_data, false);
         if (CAMERA_OK != ret)
@@ -510,8 +512,8 @@ static void recv_data_task(void *pvParameter)
     vTaskDelete(NULL);
 }
 
-void flash_led(void) {
-    for (int i=0; i<3;i++) {
+void flash_led(int rpt) {
+    for (int i=0; i<rpt; i++) {
         vTaskDelay(50 / portTICK_PERIOD_MS);
         gpio_set_level(15, 0);
         vTaskDelay(50 / portTICK_PERIOD_MS);
@@ -525,6 +527,7 @@ static void send_queue_pic_task(void *pvParameter)
     int ret;
     extern int max_sleep_uptime;
     extern unsigned char is_connect;
+    extern void flash_led(int);
     char timeStr[32];
     time_t timeValue;
     struct tm tmValue, rtcValue;
@@ -536,6 +539,8 @@ static void send_queue_pic_task(void *pvParameter)
     while( !is_connect ) {
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
+    flash_led(2);
+    
     esp_wait_sntp_sync();
     time(&timeValue);
     localtime_r(&timeValue, &tmValue);
@@ -565,7 +570,7 @@ static void send_queue_pic_task(void *pvParameter)
             }
             /* send over: okay */
             printf("======send over========\r\n");
-            flash_led();
+            flash_led(4);
             g_pic_send_over = TRUE;
             if( max_sleep_uptime == DEF_MAX_SLEEP_TIME ) {
                 upgrade_block();

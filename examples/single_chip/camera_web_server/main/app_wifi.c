@@ -61,7 +61,6 @@ unsigned char is_connect = FALSE;
 
 static esp_err_t event_handler(void *ctx, system_event_t *event)
 {
-    void flash_led(void);
 //    printf("file:%s, line:%d, in event_handler, event->event_id = %d\r\n", __FILE__, __LINE__, event->event_id);
     switch(event->event_id) {
     case SYSTEM_EVENT_AP_STACONNECTED:
@@ -87,7 +86,6 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
                  ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip));
         is_connect = TRUE;
         s_retry_num = 0;
-        flash_led();
         break;
     case SYSTEM_EVENT_STA_DISCONNECTED:
         {
