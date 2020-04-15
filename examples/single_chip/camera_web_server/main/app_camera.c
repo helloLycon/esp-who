@@ -41,6 +41,7 @@
 #include "camera_error.h"
 #include "i2c_example_main.h"
 #include "adc1_example_main.h"
+#include "spiffs_example_main.h"
 
 static const char *TAG = "app_camera";
 /* add by liuwenjian 2020-3-4 begin */
@@ -335,6 +336,7 @@ void send_heartbeat_packet()
     if (ESP_OK == sock_ret)
     {
         extern void flash_led(int);
+        SET_LOG(connect_server);
         flash_led(3);
         printf("file:%s, line:%d, begin send_data\r\n", __FILE__, __LINE__);
         ret = send_data(packet_send_data, false);
@@ -433,6 +435,7 @@ static esp_err_t stream_send()
                         /* ³¬Ê±½áÊøÂ¼ÖÆ */
                         printf("file:%s, line:%d, camera over, cur_time = %d\r\n", __FILE__, __LINE__, cur_time);
                         g_camera_over = true;
+                        SET_LOG(camera_over);
                         break;
                     }
 /*                    ptr = (uint8_t *)malloc(fb->len);
@@ -539,10 +542,12 @@ static void send_queue_pic_task(void *pvParameter)
     while( !is_connect ) {
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
+    SET_LOG(connect_wifi);
     flash_led(2);
     
     esp_wait_sntp_sync();
     time(&timeValue);
+    run_log.boot = timeValue - xTaskGetTickCount()/configTICK_RATE_HZ;
     localtime_r(&timeValue, &tmValue);
     pcf8563RtcRead(I2C_RTC_MASTER_NUM, reg);
     pcf8563RtcToString(reg, timeStr);
@@ -570,11 +575,13 @@ static void send_queue_pic_task(void *pvParameter)
             }
             /* send over: okay */
             printf("======send over========\r\n");
+            SET_LOG(send_over);
             flash_led(4);
             g_pic_send_over = TRUE;
             if( max_sleep_uptime == DEF_MAX_SLEEP_TIME ) {
                 upgrade_block();
                 printf("=-> send shutdown request\n");
+                run_log_write();
                 uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
             }
             break;

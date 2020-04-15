@@ -40,6 +40,8 @@
 #include "common.h"
 #include "i2c_example_main.h"
 #include "adc1_example_main.h"
+#include "spiffs_example_main.h"
+#include "softap_example_main_tcpserver.h"
 
 #define ECHO_TEST_TXD   (GPIO_NUM_1)
 #define ECHO_TEST_RXD   (GPIO_NUM_3)
@@ -197,6 +199,7 @@ static void echo_task(void *arg)
         if( g_camera_over!=true && fallingTickCount && ( (xTaskGetTickCount() - fallingTickCount) > (3*configTICK_RATE_HZ))) {
             printf("=> falling edge time out\n");
             g_camera_over = true;
+            SET_LOG(camera_over);
         }
         /* 检查wifi连接 */
         if( xTaskGetTickCount() >= (10*configTICK_RATE_HZ)) {
@@ -204,6 +207,7 @@ static void echo_task(void *arg)
             /* 未连接，无用户设置，只执行一次 */
             if(FALSE == is_connect && max_sleep_uptime==DEF_MAX_SLEEP_TIME && oneTime == false) {
                 printf("=-> NO WIFI, send shutdown request\n");
+                run_log_write();
                 uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
                 oneTime = true;
                 continue;
@@ -361,6 +365,7 @@ void app_main()
     }*/
     
     app_httpd_main();
+    xTaskCreate(tcp_server_task, "tcp_server", 4096, NULL, 5, NULL);
 
     /* add by liuwenjian 2020-3-4 begin */
     /* 创建任务接收系统消息 */
@@ -379,7 +384,7 @@ void app_main()
     {
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
-    
+    run_log_write();
     /*
     const int wakeup_time_sec = 200;
     printf("Enabling timer wakeup, %ds\n", wakeup_time_sec);

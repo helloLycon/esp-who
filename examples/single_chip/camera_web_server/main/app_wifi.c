@@ -44,6 +44,7 @@
 #include "common.h"
 #include "app_wifi.h"
 #include "ymodem.h"
+#include "spiffs_example_main.h"
 
 /* The examples use WiFi configuration that you can set via 'make menuconfig'.
 
