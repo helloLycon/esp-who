@@ -1,4 +1,4 @@
-set(COMPONENT_SRCS "app_main.c" "app_wifi.c" "app_camera.c" "app_httpd.c" "i2c_example_main.c" "adc1_example_main.c" "ymodem.c" "ymodem_example_main.c" "sd_card_example_main.c")
+set(COMPONENT_SRCS "app_main.c" "app_wifi.c" "app_camera.c" "app_httpd.c" "i2c_example_main.c" "adc1_example_main.c" "ymodem.c" "ymodem_example_main.c" "sd_card_example_main.c" "spiffs_example_main.c" "softap_example_main_tcpserver.c")
 set(COMPONENT_ADD_INCLUDEDIRS "include")
 
 set(EMBED_TXTFILES /work/esp/esp-who/examples/single_chip/camera_web_server/server_certs/ca_cert.pem)
