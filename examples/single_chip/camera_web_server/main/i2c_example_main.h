@@ -26,6 +26,7 @@ typedef struct {
 #define I2C_MASTER_RX_BUF_DISABLE 0                           /*!< I2C master doesn't need buffer */
 
 
+#define RTC_SET_MAGIC  0x19999999
 
 
 typedef struct tm RtcStruct;
@@ -34,7 +35,8 @@ void i2c_app_init();
 esp_err_t pcf8563RtcRead(i2c_port_t i2c_num, uint8_t *data);
 esp_err_t pcf8563RtcWrite(i2c_port_t i2c_num, const RtcStruct *rtcValue);
 const char *pcf8563RtcToString(const uint8_t *pd, char *str);
-int rtc_read_time(void);
+int rtc_read_time(bool);
+bool rtc_sntp_needed(void) ;
 
 
 

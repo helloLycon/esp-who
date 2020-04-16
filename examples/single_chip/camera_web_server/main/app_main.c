@@ -41,6 +41,7 @@
 #include "i2c_example_main.h"
 #include "adc1_example_main.h"
 #include "sd_card_example_main.h"
+#include "esp_log.h"
 
 #define ECHO_TEST_TXD   (GPIO_NUM_1)
 #define ECHO_TEST_RXD   (GPIO_NUM_35)
@@ -48,6 +49,7 @@
 #define ECHO_TEST_CTS   (UART_PIN_NO_CHANGE)
 #define BUF_SIZE        (256)
 
+static const char *TAG = "main";
 bool g_camera_over = false;
 bool g_update_mcu = false;
 unsigned char g_pic_send_over = FALSE;
@@ -55,6 +57,7 @@ unsigned char g_update_flag = FALSE;
 init_info g_init_data;
 
 int max_sleep_uptime = DEF_MAX_SLEEP_TIME;
+bool rtc_set_magic_match;
 
 void nop(void) {
     while(1) {
@@ -66,6 +69,40 @@ void upgrade_block(void) {
     if(TRUE == g_update_flag) {
         nop();
     }
+}
+
+esp_err_t store_init_data(void)
+{
+    nvs_handle my_handle;
+    esp_err_t err;
+
+    err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "file:%s, line:%d, nvs_open err = %d\r\n", __FILE__, __LINE__, err);
+        return err;
+    }
+    err = nvs_set_blob(my_handle, "device_info", &(g_init_data.config_data), sizeof(config_para));
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "file:%s, line:%d, nvs_set_blob err = %d\r\n", __FILE__, __LINE__, err);
+        nvs_close(my_handle);
+        return err;
+    }
+
+    // Commit
+    err = nvs_commit(my_handle);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "file:%s, line:%d, nvs_commit err = %d\r\n", __FILE__, __LINE__, err);
+        nvs_close(my_handle);
+        return err;
+    }
+
+    printf("=-> g_init_data write into flash OKAY\n");
+    // Close
+    nvs_close(my_handle);
+    return ESP_OK;
 }
 
 
@@ -149,6 +186,11 @@ void init_para(bool erase_all)
     if(g_init_data.config_data.ir_voltage <= 0 || g_init_data.config_data.ir_voltage > 10000) {
         fix = true;
         g_init_data.config_data.ir_voltage = IR_VOL_UNSET;
+    }
+    if(g_init_data.config_data.rtc_set != RTC_SET_MAGIC) {
+        rtc_set_magic_match = false;
+    } else {
+        rtc_set_magic_match = true;
     }
 
     printf("file:%s, line:%d, DevId = %s, g_init_data.service_ip_str = %s, g_init_data.service_ip_str[0] = %d\r\n", 
@@ -345,7 +387,7 @@ void app_main()
     init_para(false);
 
     i2c_app_init();
-    rtc_read_time();
+    rtc_read_time(false);
     /* test sdcard */
     //sdcard_init_main();
     //vTaskDelay(1000000 / portTICK_PERIOD_MS);

@@ -57,6 +57,9 @@ typedef struct config_para{
     char wifi_ap_ssid[64];
     char wifi_ap_key[32];
     int  ir_voltage;
+    /* sntp->rtc */
+    time_t last_sntp;
+    uint32_t rtc_set;
 }config_para;
 
 /* 初始化参数 */
@@ -72,6 +75,7 @@ extern init_info g_init_data;
 
 void upgrade_block(void) ;
 int led_gpio_init(void);
+esp_err_t store_init_data(void);
 
 
 #endif

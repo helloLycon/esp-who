@@ -546,6 +546,7 @@ static void send_queue_pic_task(void *pvParameter)
     time_t timeValue;
     struct tm tmValue, rtcValue;
     uint8_t reg[8];
+    char timeStr[32];
     printf("file:%s, line:%d, begin esp_wait_sntp_sync\r\n", __FILE__, __LINE__);
 
     /* 用于时间同步 */
@@ -553,10 +554,23 @@ static void send_queue_pic_task(void *pvParameter)
     while( !is_connect ) {
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
-    esp_wait_sntp_sync();
-    time(&timeValue);
-    localtime_r(&timeValue, &tmValue);
+    if(rtc_sntp_needed()) {
+        esp_wait_sntp_sync();
+        time(&timeValue);
+        localtime_r(&timeValue, &tmValue);
+        printf("=-> sntp: %s", ctime_r(&timeValue, timeStr));
+        if(pcf8563RtcWrite(I2C_RTC_MASTER_NUM, &tmValue) != ESP_OK) {
+            ESP_LOGE(TAG, "write rtc failed");
+        } else {
+            rtc_read_time(true);
 
+            /* set flash data */
+            //printf("timv = %ld\n", timeValue);
+            g_init_data.config_data.last_sntp = timeValue;
+            g_init_data.config_data.rtc_set = RTC_SET_MAGIC;
+            store_init_data();
+        }
+    }
     //    int64_t test_frame = 0;
     g_init_data.start_time = time(NULL);
 

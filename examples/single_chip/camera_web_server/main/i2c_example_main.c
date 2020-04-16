@@ -13,9 +13,11 @@
 */
 #include <stdio.h>
 #include <time.h>
+#include <sys/time.h>
 #include "esp_log.h"
 #include "driver/i2c.h"
 #include "sdkconfig.h"
+#include "common.h"
 #include "i2c_example_main.h"
 
 static const char *TAG = "i2c-example";
@@ -109,6 +111,37 @@ esp_err_t pcf8563RtcRead(i2c_port_t i2c_num, uint8_t *data)
     ret = i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_RATE_MS);
     i2c_cmd_link_delete(cmd);
     return ret;
+}
+
+const struct tm *pcf8563RegToStructTm(const uint8_t *pd, struct tm *ptm) {
+    uint8_t sec = bcdToInt(pd[0] & 0x7f);
+    uint8_t min = bcdToInt(pd[1] & 0x7f);
+    uint8_t hour = bcdToInt(pd[2] & 0x3f);
+    uint8_t day = bcdToInt(pd[3] & 0x3f);
+    uint8_t weekday = pd[4] & 0x07;
+    uint8_t month = bcdToInt(pd[5] & 0x1f);
+    uint8_t year = bcdToInt(pd[6]);
+
+    ptm->tm_sec = sec;
+    ptm->tm_min = min;
+    ptm->tm_hour = hour;
+    ptm->tm_mday = day;
+    ptm->tm_mon = month-1;
+    ptm->tm_year = year+2000-1900;
+    ptm->tm_wday = weekday;
+    return ptm;
+}
+
+const struct tm *pcf8563RtcReadStructTm(i2c_port_t i2c_num, struct tm *ptm) {
+    uint8_t reg[16];
+    char timeStr[32];
+    int err = pcf8563RtcRead(i2c_num, reg);
+    if(err != ESP_OK) {
+        return NULL;
+    }
+    pcf8563RtcToString(reg, timeStr);
+    printf("=-> rtc local transaction: %s\n", timeStr);
+    return pcf8563RegToStructTm(reg, ptm);
 }
 
 /**
@@ -285,16 +318,61 @@ void i2c_app_init()
     //xTaskCreate(i2c_test_task, "i2c_test_task_0", 1024 * 2, (void *)0, 10, NULL);
 }
 
-int rtc_read_time(void) {
+bool rtc_sntp_needed(void) {
+    extern bool rtc_set_magic_match;
     char timeStr[32];
-    uint8_t reg[8];
+    if(false == rtc_set_magic_match) {
+        printf("rtc-set-magic not set, NEED SNTP\n");
+        return true;
+    }
+    time_t timev = time(NULL);
+
+    //printf("timv = %ld\n", g_init_data.config_data.last_sntp);
+    printf("check whether sntp needed, last-sntp = %s", ctime_r(&g_init_data.config_data.last_sntp, timeStr));
+    /* get a future time? */
+    if( timev<g_init_data.config_data.last_sntp ) {
+        printf("invalid last sntp time, NEED SNTP\n");
+        return true;
+    }
+    /* one day passed, need to sntp */
+    if(timev > (g_init_data.config_data.last_sntp + 24*60*60)) {
+        printf("one more day passed, NEED SNTP\n");
+        return true;
+    }
+    printf("SNTP NOT NEEDED\n");
+    return false;
+}
+
+int rtc_read_time(bool checkAfterWrite) {
+    char timeStr[32];
     struct tm tmValue;
-    
-    pcf8563RtcRead(I2C_RTC_MASTER_NUM, reg);
-    pcf8563RtcToString(reg, timeStr);
-    printf("==> rtc-read: %s\r\n", timeStr);
+    time_t timeValue;
+
+    /* set time zone */
+    setenv("TZ", "CTS-8", 1);
+    tzset();
+
+    if(pcf8563RtcReadStructTm(I2C_RTC_MASTER_NUM, &tmValue)==NULL) {
+        ESP_LOGE(TAG, "%s: error", __func__);
+        return ESP_FAIL;
+    }
+    timeValue = mktime(&tmValue);
+    printf("=-> step1: ctime rtc-time = %s", ctime_r(&timeValue, timeStr));
+
+    if(false == checkAfterWrite) {
+        /* set sys-time */
+        struct timeval tv = {
+            .tv_sec = timeValue,
+        };
+        settimeofday(&tv, NULL);
+        time(&timeValue);
+        printf("=-> step2: ctime systime = %s", ctime_r(&timeValue, timeStr));
+    }
+    //pcf8563RtcRead(I2C_RTC_MASTER_NUM, reg);
+    //pcf8563RtcToString(reg, timeStr);
+    //printf("==> rtc-read: %s\r\n", timeStr);
     //pcf8563RtcWrite(I2C_RTC_MASTER_NUM, &tmValue);
     //printf("file:%s, line:%d, ---->(%d-%02d-%02d %02d:%02d:%02d)\r\n", __FILE__, __LINE__, tmValue.tm_year+1900, tmValue.tm_mon+1, tmValue.tm_mday, tmValue.tm_hour, tmValue.tm_min, tmValue.tm_sec);
-    return 0;
+    return ESP_OK;
 }
 
