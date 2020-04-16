@@ -266,18 +266,18 @@ void pic_out_queue()
 void pic_in_queue(int len, unsigned char *buf)
 {
     pic_queue *cur_pic = NULL;
-    cur_pic = (pic_queue *)heap_caps_malloc(sizeof(pic_queue), MALLOC_CAP_SPIRAM);
+    cur_pic = (pic_queue *)malloc(sizeof(pic_queue));
     if (NULL == cur_pic)
     {
-        printf("file:%s, line:%d, heap_caps_malloc %d, failed!\r\n", __FILE__, __LINE__, sizeof(pic_queue));
+        printf("file:%s, line:%d, malloc %d, failed!\r\n", __FILE__, __LINE__, sizeof(pic_queue));
         return ;
     }
 
-    cur_pic->pic_info = (unsigned char *)heap_caps_malloc((len + 1), MALLOC_CAP_SPIRAM);
+    cur_pic->pic_info = (unsigned char *)malloc((len + 1));
     if (NULL == cur_pic->pic_info)
     {
         free(cur_pic);
-        printf("file:%s, line:%d, heap_caps_malloc %d, failed!\r\n", __FILE__, __LINE__, len);
+        printf("file:%s, line:%d, malloc %d, failed!\r\n", __FILE__, __LINE__, len);
         return ;
     }
     cur_pic->next = NULL;

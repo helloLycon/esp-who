@@ -35,7 +35,7 @@
 
 
 #define TCP_PORT            10086               //统一的端口号，包括TCP客户端或者服务端
-#define CAMERA_VIDEO_TIME   12
+#define CAMERA_VIDEO_TIME   10
 
 #define IR_VOL_UNSET      0
 
