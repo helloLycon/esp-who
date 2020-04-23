@@ -402,6 +402,8 @@ void simple_ota_example_task(void *pvParameter)
 
 void app_wifi_main()
 {
+    extern bool status_read_flag;
+    extern int max_sleep_uptime;
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     wifi_mode_t mode = WIFI_MODE_NULL;
 
@@ -419,7 +421,13 @@ void app_wifi_main()
     {
         mode = WIFI_MODE_STA;
     }
-
+    /* 如果是按键唤醒，不连wifi */
+    while(false == status_read_flag) {
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+    if(max_sleep_uptime!=DEF_MAX_SLEEP_TIME) {
+        mode = WIFI_MODE_AP;
+    }
 /*    esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
       ESP_ERROR_CHECK(nvs_flash_erase());

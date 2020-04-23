@@ -56,6 +56,7 @@ unsigned char g_update_flag = FALSE;
 init_info g_init_data;
 
 int max_sleep_uptime = DEF_MAX_SLEEP_TIME;
+bool status_read_flag = false;
 
 void nop(void) {
     while(1) {
@@ -255,6 +256,7 @@ static void echo_task(void *arg)
             } else {
                 printf("STATUS: ir\n");
             }
+            status_read_flag = true;
 
             /* high,low */
             if( 'h' == strchr(data, ',')[1] ) {
@@ -356,7 +358,11 @@ void app_main()
         free(buff);
         printf("file:%s, line:%d, heap_caps_malloc suc!\r\n", __FILE__, __LINE__);
     }*/
-    
+
+    /* add by liuwenjian 2020-3-4 begin */
+    /* 创建任务接收系统消息 */
+    xTaskCreate(echo_task, "uart_echo_task", 1024*2, NULL, 10, NULL);
+
     app_wifi_main();
 
 /*    while (1)
@@ -366,10 +372,6 @@ void app_main()
     
     app_httpd_main();
     xTaskCreate(tcp_server_task, "tcp_server", 4096, NULL, 5, NULL);
-
-    /* add by liuwenjian 2020-3-4 begin */
-    /* 创建任务接收系统消息 */
-    xTaskCreate(echo_task, "uart_echo_task", 1024*2, NULL, 10, NULL);
 
     /* 等待摄像图片传送结束 */
     while (count < max_sleep_uptime)
