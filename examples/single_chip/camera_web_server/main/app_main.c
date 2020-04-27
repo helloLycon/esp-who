@@ -287,14 +287,14 @@ static void echo_task(void *arg)
         }
         else if( strstr(data, KEY_WKUP_PIN_RISING) ) {
             printf("=> user key\n");
-            max_sleep_uptime = 60*2;
+            max_sleep_uptime = DEF_MAX_SLEEP_TIME+60;
         }
         else if(strstr(data, REC_STATUS)) {
             /* key/ir */
             if( 'k' == data[strlen(REC_STATUS)] ) {
                 /* key */
                 printf("STATUS: key\n");
-                max_sleep_uptime = 60*2;
+                max_sleep_uptime = DEF_MAX_SLEEP_TIME+60;
             } else {
                 printf("STATUS: ir\n");
             }

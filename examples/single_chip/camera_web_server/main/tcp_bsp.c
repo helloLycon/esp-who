@@ -352,6 +352,7 @@ void package_message(packet_info packet_data, int *package_len, unsigned char *p
 */
 int send_data(packet_info packet_data, bool recv_needed)
 {
+    extern int snsn;
     int ret;
     int len = 0;            //长度
     int send_len = 0;
@@ -359,7 +360,7 @@ int send_data(packet_info packet_data, bool recv_needed)
 
     if (NULL == g_send_buf)
     {
-        g_send_buf = (unsigned char *)malloc(2048);
+        g_send_buf = (unsigned char *)malloc(APP_PACKET_DATA_LEN + 128);
         if (NULL == g_send_buf)
         {
             printf("file:%s, line:%d, malloc failed errno = %d, errno = %s\r\n", 
@@ -369,13 +370,21 @@ int send_data(packet_info packet_data, bool recv_needed)
     }
     
     //清空缓存
-    memset(g_send_buf, 0x00, 2048);
+    memset(g_send_buf, 0x00, APP_PACKET_DATA_LEN + 128);
 
 //    printf("file:%s, line:%d, begin package_message\r\n", __FILE__, __LINE__);
     package_message(packet_data, &len, g_send_buf);
     //读取接收数据
 //    printf("file:%s, line:%d, connect_socket = %d, len = %d\r\n", 
 //        __FILE__, __LINE__, connect_socket, len);
+
+#if  0
+    static uint16_t cnt = 0;
+    memcpy(g_send_buf, &cnt, 2);
+    cnt++;
+    printf("cnt = %d len = %d\n", cnt, len);
+    memset(g_send_buf+2, snsn, len-2);
+#endif
     send_len = send(connect_socket, g_send_buf, len, 0);
     g_rxtx_need_restart = false;
     if (send_len > 0)
@@ -411,11 +420,13 @@ int send_data(packet_info packet_data, bool recv_needed)
 skip_recv:
 /*
     close_socket();
-    //标记重连
+    //<B1><EA><BC><C7><D6><D8><C1><AC>
     g_rxtx_need_restart = true;
     vTaskDelete(NULL);
 */
 //    printf("file:%s, line:%d, send_len = %d\r\n", __FILE__, __LINE__, send_len);
+
+    //vTaskDelay(10 / portTICK_PERIOD_MS);
     return CAMERA_OK;
 }
 
