@@ -50,6 +50,7 @@ pic_queue *g_pic_queue_tail = NULL;
 
 static int send_jpeg(pic_queue *send_pic)
 {
+    extern int snsn;
     my_MD5_CTX md5;
     int i;
     int ret;
@@ -86,19 +87,20 @@ static int send_jpeg(pic_queue *send_pic)
             
             while (send_pic->pic_len > send_len)
             {
-                if (send_pic->pic_len - send_len > 1024)
+                if (send_pic->pic_len - send_len > APP_PACKET_DATA_LEN)
                 {
-                    my_MD5Update(&md5, (send_pic->pic_info + send_len), 1024);
+                    my_MD5Update(&md5, (send_pic->pic_info + send_len), APP_PACKET_DATA_LEN);
                     jpeg_data.buf = send_pic->pic_info + send_len;
                     jpeg_data.create_time = send_pic->cur_time;
                     jpeg_data.num = sn;
                     jpeg_data.send_count = send_len;
                     packet_send_data.data = (void *)(&jpeg_data);
-                    packet_send_data.send_len = 1024 + 14;
+                    packet_send_data.send_len = APP_PACKET_DATA_LEN + 14;
                     packet_send_data.status = HAVE_DATA;
                     packet_send_data.type = SEND_FACE_PIC_CODE;
                     
     //                printf("file:%s, line:%d, begin send_data\r\n", __FILE__, __LINE__);
+                    printf("%d send: sn = %d\n", xTaskGetTickCount(), jpeg_data.num);
                     ret = send_data(packet_send_data, true);
                     if (CAMERA_OK != ret)
                     {
@@ -117,7 +119,7 @@ static int send_jpeg(pic_queue *send_pic)
                             return ;
                         }
                     }*/
-                    send_len += 1024;
+                    send_len += APP_PACKET_DATA_LEN;
                 }
                 else
                 {
@@ -132,6 +134,7 @@ static int send_jpeg(pic_queue *send_pic)
                     packet_send_data.type = SEND_FACE_PIC_CODE;
                     
     //                printf("file:%s, line:%d, begin send_data\r\n", __FILE__, __LINE__);
+                    printf("%d send: sn = %d\n", xTaskGetTickCount(), jpeg_data.num);
                     ret = send_data(packet_send_data, true);
                     if (CAMERA_OK != ret)
                     {
@@ -166,6 +169,7 @@ static int send_jpeg(pic_queue *send_pic)
             jpeg_data.create_time = send_pic->cur_time;
             jpeg_data.num = sn;
             sn++;
+            snsn = sn;
             jpeg_data.send_count = send_len;
             packet_send_data.data = (void *)(&jpeg_data);
             packet_send_data.send_len = MD5_STR_LEN + 14;
@@ -173,6 +177,7 @@ static int send_jpeg(pic_queue *send_pic)
             packet_send_data.type = SEND_FACE_PIC_CODE;
 
     //        printf("file:%s, line:%d, md5_str = %s\r\n", __FILE__, __LINE__, md5_str);
+            printf("%d send: md5 = %s\n", xTaskGetTickCount(), md5_str);
             ret = send_data(packet_send_data, true);
             if (CAMERA_OK != ret)
             {
@@ -210,6 +215,7 @@ static int send_jpeg(pic_queue *send_pic)
             packet_send_data.type = SEND_FACE_PIC_CODE;
             
 //                printf("file:%s, line:%d, begin send_data\r\n", __FILE__, __LINE__);
+            printf("%d send NULL: sn = %d\n", xTaskGetTickCount(), jpeg_data.num);
             ret = send_data(packet_send_data, true);
             if (CAMERA_OK != ret)
             {
@@ -523,6 +529,8 @@ void flash_led(int rpt) {
         gpio_set_level(15, 1);
     }
 }
+
+int snsn = 0;
 
 /* 队列读取图片并发送出去 */
 static void send_queue_pic_task(void *pvParameter)
