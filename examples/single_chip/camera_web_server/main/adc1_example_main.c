@@ -51,15 +51,17 @@ static void print_char_val_type(esp_adc_cal_value_t val_type)
 }
 
 static int voltage_to_percent(int voltage_in_mV) {
+    const int upper = 4050;
+    const int lower = 3300;
     /* 0%: 3300mV/2, 100%: 4200mV/2 */
-    if(voltage_in_mV<=3300/2) {
+    if(voltage_in_mV<=lower/2) {
         return 0;
     }
-    if(voltage_in_mV>=4200/2) {
+    if(voltage_in_mV>=upper/2) {
         return 100;
     }
     /* (v*2-3300)/900*100 */
-    return (voltage_in_mV*200-330000)/900;
+    return (voltage_in_mV*200 - lower*100)/(upper - lower);
 }
 
 int  adc_read_battery_percent(void) {
