@@ -11,6 +11,8 @@
 #include <sys/unistd.h>
 #include <sys/stat.h>
 #include <time.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_spiffs.h"
@@ -154,9 +156,16 @@ void spiffs_deinit(void) {
 }
 
 int run_log_write(void) {
+    extern unsigned char g_pic_send_over;
     if(is_reading) {
         return 0;
     }
+
+    /* send failed */
+    if(!g_pic_send_over) {
+        SET_LOG(send_fail);
+    }
+
     int ret = spiffs_init();
     if(ret != ESP_OK) {
         goto fail2;
@@ -197,6 +206,9 @@ void run_log_dump(int f, const RunLog *p) {
     }
     if(p->send_over) {
         dprintf(f, "%d: send over\n",p->send_over);
+    }
+    if(p->send_fail) {
+        dprintf(f, "%d: send failed\n",p->send_fail);
     }
 }
 
