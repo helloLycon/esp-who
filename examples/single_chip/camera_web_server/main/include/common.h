@@ -33,6 +33,8 @@
 #define GET_STATUS    "~get_status"                           //获取状态
 #define REC_STATUS  "~rec_status="                          //返回状态~status=唤醒来源，移动侦测io状态，~rec_status=key(ir),high(low)
 #define KEY_WKUP_PIN_RISING  "~key_wkup_pin_rising"    //按键唤醒脚上升沿，有按键事件
+#define CAMERA_POWER_DOWN_REQ    "~camera_power_down_req"
+#define CAMERA_POWER_DOWN_OK    "~camera_power_down_ok"
 
 
 #define TCP_PORT            10086               //统一的端口号，包括TCP客户端或者服务端

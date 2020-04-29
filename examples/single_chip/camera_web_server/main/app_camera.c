@@ -310,6 +310,23 @@ void pic_in_queue(int len, unsigned char *buf)
     return ;
 }
 
+int cam_power_down(void) {
+    for(int i=0; i<3; i++) {
+        printf("send cam_power_down request...\n");
+        uart_write_bytes(ECHO_UART_NUM, CAMERA_POWER_DOWN_REQ, strlen(CAMERA_POWER_DOWN_REQ));
+        for(int wait = 0; wait<20; wait++) {
+            extern bool g_camera_power;
+            if(g_camera_power == false) {
+                //printf("camera power down OKAY\n");
+                return 0;
+            } else {
+                vTaskDelay(50 / portTICK_PERIOD_MS);
+            }
+        }
+    }
+    return -1;
+}
+
 void send_heartbeat_packet()
 {
     int ret;
@@ -484,6 +501,7 @@ static void get_camera_data_task(void *pvParameter)
 {
     stream_send();
     ESP_LOGI(TAG, "delete thread get_camera_data_task!");
+    cam_power_down();
     vTaskDelete(NULL);
 }
 

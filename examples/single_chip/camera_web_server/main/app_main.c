@@ -57,6 +57,7 @@ init_info g_init_data;
 
 int max_sleep_uptime = DEF_MAX_SLEEP_TIME;
 bool status_read_flag = false;
+bool g_camera_power = true;
 
 void nop(void) {
     while(1) {
@@ -246,6 +247,11 @@ static void echo_task(void *arg)
         else if( strstr(data, KEY_WKUP_PIN_RISING) ) {
             printf("=> user key\n");
             max_sleep_uptime = DEF_MAX_SLEEP_TIME+60;
+        }
+        else if(strstr(data, CAMERA_POWER_DOWN_OK)) {
+            extern bool g_camera_power;
+            g_camera_power = false;
+            printf("camera power down OKAY\n");
         }
         else if(strstr(data, REC_STATUS)) {
             /* key/ir */
