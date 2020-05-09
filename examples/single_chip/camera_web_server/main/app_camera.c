@@ -406,7 +406,7 @@ static esp_err_t stream_send()
 #endif
     /* modify by liuwenjian 2020-3-4 begin */
     /* Â¼Ïñ¼ÆÊ± */
-    cur_time = old_time = time(NULL);
+    cur_time = old_time = xTaskGetTickCount();
     printf("file:%s, line:%d, begin while, cur_time = %d\r\n", __FILE__, __LINE__, cur_time);
     ESP_LOGI(TAG, "<---------START CAPTURE--------->");
     while (false == g_camera_over)
