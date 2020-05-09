@@ -19,6 +19,7 @@
 #include "sdkconfig.h"
 #include "common.h"
 #include "i2c_example_main.h"
+#include "tcp_bsp.h"
 
 static const char *TAG = "i2c-example";
 
@@ -36,6 +37,8 @@ static const char *TAG = "i2c-example";
 #define ACK_CHECK_DIS 0x0                       /*!< I2C master will not check ack from slave */
 #define ACK_VAL 0x0                             /*!< I2C ack value */
 #define NACK_VAL 0x1                            /*!< I2C nack value */
+
+#define NTP_TIMEOUT_IN_SECOND   (60*60*24*7)
 
 SemaphoreHandle_t print_mux = NULL;
 
@@ -335,7 +338,7 @@ bool rtc_sntp_needed(void) {
         return true;
     }
     /* one day passed, need to sntp */
-    if(timev > (g_init_data.config_data.last_sntp + 24*60*60)) {
+    if(timev > (g_init_data.config_data.last_sntp + NTP_TIMEOUT_IN_SECOND)) {
         printf("one more day passed, NEED SNTP\n");
         return true;
     }
@@ -343,7 +346,7 @@ bool rtc_sntp_needed(void) {
     return false;
 }
 
-int rtc_read_time(bool checkAfterWrite) {
+int rtc_read_time(bool checkOnly) {
     char timeStr[32];
     struct tm tmValue;
     time_t timeValue;
@@ -359,7 +362,7 @@ int rtc_read_time(bool checkAfterWrite) {
     timeValue = mktime(&tmValue);
     printf("=-> step1: ctime rtc-time = %s", ctime_r(&timeValue, timeStr));
 
-    if(false == checkAfterWrite) {
+    if(false == checkOnly) {
         /* set sys-time */
         struct timeval tv = {
             .tv_sec = timeValue,
@@ -374,5 +377,34 @@ int rtc_read_time(bool checkAfterWrite) {
     //pcf8563RtcWrite(I2C_RTC_MASTER_NUM, &tmValue);
     //printf("file:%s, line:%d, ---->(%d-%02d-%02d %02d:%02d:%02d)\r\n", __FILE__, __LINE__, tmValue.tm_year+1900, tmValue.tm_mon+1, tmValue.tm_mday, tmValue.tm_hour, tmValue.tm_min, tmValue.tm_sec);
     return ESP_OK;
+}
+
+int sntp_rtc_routine(void) {
+    char timeStr[32];
+    time_t timeValue;
+    struct tm tmValue;
+    extern unsigned char is_connect;
+    while( !is_connect ) {
+        vTaskDelay(50 / portTICK_PERIOD_MS);
+    }
+
+    /* sntp client */
+    esp_wait_sntp_sync();
+    time(&timeValue);
+    localtime_r(&timeValue, &tmValue);
+    printf("=-> sntp: %s", ctime_r(&timeValue, timeStr));
+    if(pcf8563RtcWrite(I2C_RTC_MASTER_NUM, &tmValue) != ESP_OK) {
+        ESP_LOGE(TAG, "write rtc failed");
+    } else {
+        rtc_read_time(true);
+
+        /* set flash data */
+        //printf("timv = %ld\n", timeValue);
+        g_init_data.config_data.last_sntp = timeValue;
+        g_init_data.config_data.rtc_set = RTC_SET_MAGIC;
+        store_init_data();
+        ESP_LOGI(TAG, "%s over", __func__);
+    }
+    return 0;
 }
 

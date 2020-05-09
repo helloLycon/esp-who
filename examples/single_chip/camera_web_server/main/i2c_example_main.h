@@ -37,6 +37,7 @@ esp_err_t pcf8563RtcWrite(i2c_port_t i2c_num, const RtcStruct *rtcValue);
 const char *pcf8563RtcToString(const uint8_t *pd, char *str);
 int rtc_read_time(bool);
 bool rtc_sntp_needed(void) ;
+int sntp_rtc_routine(void) ;
 
 
 

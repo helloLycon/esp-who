@@ -388,31 +388,17 @@ void app_main()
 
     i2c_app_init();
     rtc_read_time(false);
-    /* test sdcard */
-    //sdcard_init_main();
-    //vTaskDelay(1000000 / portTICK_PERIOD_MS);
-    /* 提前拍摄 */
-    app_camera_main();
 
-
-/*    buff = (char *)heap_caps_malloc(3 * 1024 * 1024, MALLOC_CAP_SPIRAM);
-    if (NULL == buff)
-    {
-        printf("file:%s, line:%d, heap_caps_malloc failed!\r\n", __FILE__, __LINE__);
+    /* 检查是否需要时间同步 */
+    if(rtc_sntp_needed()) {
+        app_wifi_main();
+        sntp_rtc_routine();
+        app_camera_main();
+    } else {
+        app_camera_main();
+        app_wifi_main();
     }
-    else
-    {
-        free(buff);
-        printf("file:%s, line:%d, heap_caps_malloc suc!\r\n", __FILE__, __LINE__);
-    }*/
-    
-    app_wifi_main();
 
-/*    while (1)
-    {
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }*/
-    
     app_httpd_main();
 
     /* add by liuwenjian 2020-3-4 begin */
