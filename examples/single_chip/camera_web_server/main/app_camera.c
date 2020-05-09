@@ -497,6 +497,7 @@ static esp_err_t stream_send()
 static void get_camera_data_task(void *pvParameter)
 {
     stream_send();
+    cam_power_down();
     ESP_LOGI(TAG, "delete thread get_camera_data_task!");
     vTaskDelete(NULL);
 }
