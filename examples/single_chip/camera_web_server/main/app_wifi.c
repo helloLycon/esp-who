@@ -45,6 +45,7 @@
 #include "app_wifi.h"
 #include "ymodem.h"
 #include "spiffs_example_main.h"
+#include "cat-eye-debug.h"
 
 /* The examples use WiFi configuration that you can set via 'make menuconfig'.
 
@@ -185,11 +186,6 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
     return ESP_OK;
 }
 
-const char *versionToUpgradeUrl(const char *version, char *upgradeUrl) {
-    int verNum = atoi(strchr(version, '_') + 1) + 1;
-    sprintf(upgradeUrl, "http://60.190.82.250:8002/camera_%d.bin", verNum);
-    return upgradeUrl;
-}
 
 const char *makeMcuUpgradeUrl(char *upgradeUrl) {
     strcpy(strrchr(upgradeUrl, '/')+1, "camera_mcu.bin");
