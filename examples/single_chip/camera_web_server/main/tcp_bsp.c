@@ -352,7 +352,6 @@ void package_message(packet_info packet_data, int *package_len, unsigned char *p
 */
 int send_data(packet_info packet_data, bool recv_needed)
 {
-    extern int snsn;
     int ret;
     int len = 0;            //³¤¶È
     int send_len = 0;

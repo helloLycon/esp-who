@@ -52,7 +52,6 @@ bool g_camera_power = true;
 
 static int send_jpeg(pic_queue *send_pic)
 {
-    extern int snsn;
     my_MD5_CTX md5;
     int i;
     int ret;
@@ -171,7 +170,6 @@ static int send_jpeg(pic_queue *send_pic)
             jpeg_data.create_time = send_pic->cur_time;
             jpeg_data.num = sn;
             sn++;
-            snsn = sn;
             jpeg_data.send_count = send_len;
             packet_send_data.data = (void *)(&jpeg_data);
             packet_send_data.send_len = MD5_STR_LEN + 14;
@@ -545,8 +543,6 @@ static void flash_led(void) {
         gpio_set_level(15, 1);
     }
 }
-
-int snsn = 0;
 
 /* 队列读取图片并发送出去 */
 static void send_queue_pic_task(void *pvParameter)

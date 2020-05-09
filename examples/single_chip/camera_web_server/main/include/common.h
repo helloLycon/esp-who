@@ -16,7 +16,7 @@
 #define ECHO_UART_NUM   (UART_NUM_0)
 
 #define DBG_NO_SLEEP_MODE  0
-#define DEF_MAX_SLEEP_TIME  180
+#define DEF_MAX_SLEEP_TIME  60
 
 #define APP_PACKET_DATA_LEN  (1024*20)
 
