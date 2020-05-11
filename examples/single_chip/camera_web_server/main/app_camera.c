@@ -582,8 +582,14 @@ static void send_queue_pic_task(void *pvParameter)
             //sdcard_test();
             //flash_led();
             SET_LOG(send_over);
+
+            portENTER_CRITICAL(&g_pic_send_over_spinlock);
             g_pic_send_over = TRUE;
-            if( max_sleep_uptime == DEF_MAX_SLEEP_TIME ) {
+            portEXIT_CRITICAL(&g_pic_send_over_spinlock);
+            portENTER_CRITICAL(&max_sleep_uptime_spinlock);
+            bool b = max_sleep_uptime == DEF_MAX_SLEEP_TIME;
+            portEXIT_CRITICAL(&max_sleep_uptime_spinlock);
+            if( b ) {
                 upgrade_block();
                 printf("=-> send shutdown request\n");
                 run_log_write();

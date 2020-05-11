@@ -17,6 +17,7 @@
 #include "esp_log.h"
 #include "esp_spiffs.h"
 #include "spiffs_example_main.h"
+#include "common.h"
 
 static const char *TAG = "example";
 
@@ -165,9 +166,11 @@ int run_log_write(void) {
     }
 
     /* send failed */
+    portENTER_CRITICAL(&g_pic_send_over_spinlock);
     if(!g_pic_send_over) {
         SET_LOG(send_fail);
     }
+    portEXIT_CRITICAL(&g_pic_send_over_spinlock);
 
     int ret = spiffs_init();
     if(ret != ESP_OK) {

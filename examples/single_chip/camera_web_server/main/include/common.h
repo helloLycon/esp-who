@@ -3,6 +3,7 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 
 #define DEVICE_ID_FLAG      "device_id"
 #define SERVICE_IP_FLAG     "service_ip"
@@ -73,8 +74,10 @@ typedef struct init_info{
 
 extern bool g_camera_over;
 extern unsigned char g_pic_send_over;
-extern unsigned char g_update_flag;
+extern xSemaphoreHandle g_update_over;
 extern init_info g_init_data;
+extern portMUX_TYPE max_sleep_uptime_spinlock;
+extern portMUX_TYPE g_pic_send_over_spinlock;
 
 void upgrade_block(void) ;
 int led_gpio_init(void);

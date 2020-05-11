@@ -368,7 +368,6 @@ void simple_ota_example_task(void *pvParameter)
     }
 
 //    printf("file:%s, line:%d, begin esp_https_ota\r\n", __FILE__, __LINE__);
-    g_update_flag = TRUE;
     printf("upgrade url: %s\n", upgradeUrl);
     esp_err_t ret = airbat_esp_https_ota(&config);
 //    printf("file:%s, line:%d, begin esp_https_ota, ret = %d\r\n", __FILE__, __LINE__, ret);
@@ -390,7 +389,11 @@ void simple_ota_example_task(void *pvParameter)
             ESP_LOGE(TAG, "No Upgrade Executed or Upgrade Failed\n");
         }
 #endif
-        g_update_flag = FALSE;
+        for(int i=0; i<10; i++) {
+            xSemaphoreGive(g_update_over);
+        }
+        //const Queue_t *q = (const Queue_t *)g_update_over;
+        //printf("sem counter = %d\n", q->uxItemSize);
     }
     vTaskDelete(NULL);
 }

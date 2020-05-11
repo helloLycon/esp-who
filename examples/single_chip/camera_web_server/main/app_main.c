@@ -52,14 +52,30 @@
 #define BUF_SIZE        (256)
 
 static const char *TAG = "main";
+static const char *SEMTAG = "semaphore";
 bool g_camera_over = false;
 bool g_update_mcu = false;
+
+portMUX_TYPE g_pic_send_over_spinlock = portMUX_INITIALIZER_UNLOCKED;
 unsigned char g_pic_send_over = FALSE;
-unsigned char g_update_flag = FALSE;
+
+xSemaphoreHandle g_update_over;
 init_info g_init_data;
 
+portMUX_TYPE max_sleep_uptime_spinlock = portMUX_INITIALIZER_UNLOCKED;
 int max_sleep_uptime = DEF_MAX_SLEEP_TIME;
+
 bool rtc_set_magic_match;
+
+int semaphoreInit(void) {
+    g_update_over = xSemaphoreCreateCounting(100, 0);
+    if(NULL == g_update_over) {
+        ESP_LOGE(SEMTAG, "g_update_over");
+        return ESP_FAIL;
+    }
+    ESP_LOGI(SEMTAG, "%s OKAY", __func__);
+    return ESP_OK;
+}
 
 void nop(void) {
     while(1) {
@@ -68,9 +84,7 @@ void nop(void) {
 }
 
 void upgrade_block(void) {
-    if(TRUE == g_update_flag) {
-        nop();
-    }
+    xSemaphoreTake(g_update_over, portMAX_DELAY);
 }
 
 esp_err_t store_init_data(void)
@@ -248,7 +262,10 @@ static void echo_task(void *arg)
         if( xTaskGetTickCount() >= (10*configTICK_RATE_HZ)) {
             static bool oneTime = false;
             /* 未连接，无用户设置，只执行一次 */
-            if(FALSE == is_connect && max_sleep_uptime==DEF_MAX_SLEEP_TIME && oneTime == false) {
+            portENTER_CRITICAL(&max_sleep_uptime_spinlock);
+            bool b = max_sleep_uptime==DEF_MAX_SLEEP_TIME;
+            portEXIT_CRITICAL(&max_sleep_uptime_spinlock);
+            if(FALSE == is_connect && b && oneTime == false) {
                 printf("=-> NO WIFI, send shutdown request\n");
                 run_log_write();
                 uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
@@ -287,14 +304,18 @@ static void echo_task(void *arg)
         }
         else if( strstr(data, KEY_WKUP_PIN_RISING) ) {
             printf("=> user key\n");
+            portENTER_CRITICAL(&max_sleep_uptime_spinlock);
             max_sleep_uptime = DEF_MAX_SLEEP_TIME+60;
+            portEXIT_CRITICAL(&max_sleep_uptime_spinlock);
         }
         else if(strstr(data, REC_STATUS)) {
             /* key/ir */
             if( 'k' == data[strlen(REC_STATUS)] ) {
                 /* key */
                 printf("STATUS: key\n");
+                portENTER_CRITICAL(&max_sleep_uptime_spinlock);
                 max_sleep_uptime = DEF_MAX_SLEEP_TIME+60;
+                portEXIT_CRITICAL(&max_sleep_uptime_spinlock);
             } else {
                 printf("STATUS: ir\n");
             }
@@ -387,6 +408,7 @@ void app_main()
         err = nvs_flash_init();
     }
 
+    semaphoreInit();
     /* 设备信息初始化 */
     init_para(false);
 
@@ -411,18 +433,23 @@ void app_main()
     xTaskCreate(echo_task, "uart_echo_task", 1024*2, NULL, 10, NULL);
 
     /* 等待摄像图片传送结束 */
-    while (count < max_sleep_uptime)
+    while (true)
     {
-        count++;
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        portENTER_CRITICAL(&max_sleep_uptime_spinlock);
+        bool b = count < max_sleep_uptime;
+        portEXIT_CRITICAL(&max_sleep_uptime_spinlock);
+        if(b) {
+            count++;
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+        } else {
+            break;
+        }
     }
     /* exceed max uptime, timeout */
 
     /* 等待升级结束 */
-    while (TRUE == g_update_flag)
-    {
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
+    xSemaphoreTake(g_update_over, portMAX_DELAY);
+
     run_log_write();
     /*
     const int wakeup_time_sec = 200;
