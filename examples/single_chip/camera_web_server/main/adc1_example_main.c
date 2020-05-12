@@ -7,12 +7,16 @@
    CONDITIONS OF ANY KIND, either express or implied.
 */
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/gpio.h"
 #include "driver/adc.h"
+#include "driver/uart.h"
 #include "esp_adc_cal.h"
+#include "spiffs_example_main.h"
+#include "common.h"
 
 #define DEFAULT_VREF    1100        //Use adc2_vref_to_gpio() to obtain a better estimate
 #define NO_OF_SAMPLES   64          //Multisampling
@@ -81,6 +85,15 @@ int  adc_read_battery_percent(void) {
     uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_reading, adc_chars);
     int percent = voltage_to_percent(voltage);
     printf("-----Raw: %d\tVoltage: %dmV percent=%d%%\n", adc_reading, voltage, percent);
+
+    if(0 == percent) {
+        /* 防止电池过放，低压关机 */
+        SET_LOG(low_battery);
+        upgrade_block();
+        printf("=-> low battery, send shutdown request\n");
+        run_log_write();
+        uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
+    }
     return percent;
 }
 

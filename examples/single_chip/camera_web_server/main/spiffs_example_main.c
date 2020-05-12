@@ -216,6 +216,9 @@ void run_log_dump(int f, const RunLog *p) {
     if(p->send_fail) {
         dprintf(f, "%d: send failed\n",p->send_fail);
     }
+    if(p->low_battery) {
+        dprintf(f, "%d: low battery\n",p->low_battery);
+    }
 }
 
 int run_log_read(int sock) {

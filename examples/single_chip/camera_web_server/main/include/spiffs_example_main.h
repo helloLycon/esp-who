@@ -10,6 +10,7 @@ typedef struct runLog {
     uint32_t camera_over;
     uint32_t send_over;
     uint32_t send_fail;
+    uint32_t low_battery;
 } __attribute__((packed)) RunLog;
 //typedef struct runLog RunLog;
 
