@@ -219,6 +219,12 @@ void package_message(packet_info packet_data, int *package_len, unsigned char *p
     send_heartbeat_info *heartbeat_data;
     int loop;
 //    int ret;
+    static config_para cfg = {0};
+    if(0 == cfg.device_id[0]) {
+        xSemaphoreTake(g_data_mutex, portMAX_DELAY);
+        cfg = g_init_data.config_data;
+        xSemaphoreGive(g_data_mutex);
+    }
 
 //    printf("file:%s, line:%d, in package_message\r\n", __FILE__, __LINE__);
 
@@ -244,7 +250,7 @@ void package_message(packet_info packet_data, int *package_len, unsigned char *p
 //    printf("file:%s, line:%d, packet_len = %d\r\n", __FILE__, __LINE__, packet_len);
 
     /* 设备编号长度 */
-    device_id_len = (unsigned char)strlen(g_init_data.config_data.device_id);
+    device_id_len = (unsigned char)strlen(cfg.device_id);
     packet_buf[packet_len] = device_id_len;
     packet_len++;
 //    printf("file:%s, line:%d, packet_len = %d\r\n", __FILE__, __LINE__, packet_len);
@@ -252,7 +258,7 @@ void package_message(packet_info packet_data, int *package_len, unsigned char *p
     /* 设备编号 */
     if (device_id_len > 0)
     {
-        memcpy(&packet_buf[packet_len], g_init_data.config_data.device_id, device_id_len);
+        memcpy(&packet_buf[packet_len], cfg.device_id, device_id_len);
         packet_len += device_id_len;
     }
     //预留
@@ -498,6 +504,9 @@ esp_err_t create_tcp_server(bool isCreatServer)
 */
 esp_err_t create_tcp_client()
 {
+    xSemaphoreTake(g_data_mutex, portMAX_DELAY);
+    config_para cfg = g_init_data.config_data;
+    xSemaphoreGive(g_data_mutex);
     //新建socket
     connect_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (connect_socket < 0)
@@ -511,11 +520,11 @@ esp_err_t create_tcp_client()
     }
     //配置连接服务器信息
     server_addr.sin_family = AF_INET;    
-    server_addr.sin_port = htons(g_init_data.config_data.service_port);
-    server_addr.sin_addr.s_addr = inet_addr(g_init_data.config_data.service_ip_str);
+    server_addr.sin_port = htons(cfg.service_port);
+    server_addr.sin_addr.s_addr = inet_addr(cfg.service_ip_str);
 
     printf("file:%s, line:%d, ip = %s, port = %d\r\n", 
-        __FILE__, __LINE__, g_init_data.config_data.service_ip_str, g_init_data.config_data.service_port);
+        __FILE__, __LINE__, cfg.service_ip_str, cfg.service_port);
         
     //连接服务器
     if (connect(connect_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)

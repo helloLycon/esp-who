@@ -398,11 +398,13 @@ int sntp_rtc_routine(void) {
     } else {
         rtc_read_time(true);
 
+        xSemaphoreTake(g_data_mutex, portMAX_DELAY);
         /* set flash data */
         //printf("timv = %ld\n", timeValue);
         g_init_data.config_data.last_sntp = timeValue;
         g_init_data.config_data.rtc_set = RTC_SET_MAGIC;
         store_init_data();
+        xSemaphoreGive(g_data_mutex);
         ESP_LOGI(TAG, "%s over", __func__);
     }
     return 0;

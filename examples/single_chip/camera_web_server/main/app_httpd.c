@@ -684,18 +684,18 @@ static esp_err_t update_config(char *type, char *value)
     nvs_handle my_handle;
     esp_err_t err;
 
+    xSemaphoreTake(g_data_mutex, portMAX_DELAY);
     err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
     if (err != ESP_OK)
     {
         printf("file:%s, line:%d, nvs_open err = %d\r\n", __FILE__, __LINE__, err);
-        return err;
+        goto update_config_fail_2;
     }
 
     if (strlen(value) <= 0)
     {
         printf("file:%s, line:%d, value = %s\r\n", __FILE__, __LINE__, value);
-        nvs_close(my_handle);
-        return ESP_FAIL;
+        goto update_config_fail;
     }
     
     if (0 == memcmp(type, DEVICE_ID_FLAG, strlen(DEVICE_ID_FLAG)))
@@ -744,29 +744,34 @@ static esp_err_t update_config(char *type, char *value)
     else
     {
         printf("file:%s, line:%d, value = %s\r\n", __FILE__, __LINE__, value);
-        nvs_close(my_handle);
-        return ESP_FAIL;
+        goto update_config_fail;
     }
 
     printf("=-> write settings~~~\n");
     err = nvs_set_blob(my_handle, "device_info", &(g_init_data.config_data), sizeof(config_para));
     if (err != ESP_OK)
     {
-        nvs_close(my_handle);
-        return err;
+        goto update_config_fail;
     }
 
     // Commit
     err = nvs_commit(my_handle);
     if (err != ESP_OK)
     {
-        nvs_close(my_handle);
-        return err;
+        goto update_config_fail;
     }
 
     // Close
     nvs_close(my_handle);
+    xSemaphoreGive(g_data_mutex);
     return ESP_OK;
+
+update_config_fail:
+    nvs_close(my_handle);
+
+update_config_fail_2:
+    xSemaphoreGive(g_data_mutex);
+    return ESP_FAIL;
 }
 /* add by liuwenjian 2020-3-4 end */
 
@@ -990,6 +995,7 @@ static esp_err_t status_handler(httpd_req_t *req)
     esp_err_t err;
 
     // Open
+    xSemaphoreTake(g_data_mutex, portMAX_DELAY);
     err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
     if (err != ESP_OK)
     {
@@ -1013,6 +1019,7 @@ static esp_err_t status_handler(httpd_req_t *req)
         
         nvs_close(my_handle);
     }
+    xSemaphoreGive(g_data_mutex);
     /*-------------------------------------------------*/
 
     sensor_t *s = esp_camera_sensor_get();
@@ -1088,34 +1095,6 @@ static esp_err_t index_handler(httpd_req_t *req)
     extern const unsigned char index_ov3660_html_gz_start[] asm("_binary_index_ov3660_html_gz_start");
     extern const unsigned char index_ov3660_html_gz_end[] asm("_binary_index_ov3660_html_gz_end");
     size_t index_ov3660_html_gz_len = index_ov3660_html_gz_end - index_ov3660_html_gz_start;
-
-    printf("file:%s, line:%d, in index_handler\r\n", __FILE__, __LINE__);
-
-    // Open
-    err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
-    if (err != ESP_OK)
-    {
-        printf("file:%s, line:%d, nvs_open failed!\r\n", __FILE__, __LINE__);
-    }
-    else
-    {
-        // Read run time blob
-        size_t required_size = sizeof(config_data);  // value will default to 0, if not set yet in NVS
-        // obtain required memory space to store blob being read from NVS
-        err = nvs_get_blob(my_handle, "device_info", &config_data, &required_size);
-        if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND)
-        {
-            printf("file:%s, line:%d, nvs_get_blob, err = %d\r\n", __FILE__, __LINE__, err);
-        }
-        else
-        {
-            printf("file:%s, line:%d, device_id = %s, ip = %s, port = %d\r\n", 
-                __FILE__, __LINE__, config_data.device_id, config_data.service_ip_str, config_data.service_port);
-        }
-        
-        nvs_close(my_handle);
-    }
-
 
     httpd_resp_set_type(req, "text/html");
     httpd_resp_set_hdr(req, "Content-Encoding", "gzip");

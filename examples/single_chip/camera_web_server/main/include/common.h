@@ -71,8 +71,8 @@ typedef struct config_para{
 
 /* 初始化参数 */
 typedef struct init_info{
-    time_t start_time;              /* 启动时间 */
     config_para config_data;        /* 配置参数 */
+    time_t start_time;              /* 启动时间 */
 }init_info;
 
 extern bool g_camera_over;
@@ -83,6 +83,8 @@ extern portMUX_TYPE max_sleep_uptime_spinlock;
 extern portMUX_TYPE g_pic_send_over_spinlock;
 extern bool wake_up_flag;
 extern xSemaphoreHandle vpercent_ready;
+extern xSemaphoreHandle g_data_mutex;
+
 
 void upgrade_block(void) ;
 int led_gpio_init(void);

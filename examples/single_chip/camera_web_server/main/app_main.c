@@ -60,6 +60,8 @@ portMUX_TYPE g_pic_send_over_spinlock = portMUX_INITIALIZER_UNLOCKED;
 unsigned char g_pic_send_over = FALSE;
 
 xSemaphoreHandle g_update_over;
+
+xSemaphoreHandle g_data_mutex;
 init_info g_init_data;
 
 portMUX_TYPE max_sleep_uptime_spinlock = portMUX_INITIALIZER_UNLOCKED;
@@ -81,6 +83,11 @@ int semaphoreInit(void) {
         return ESP_FAIL;
     }
 
+    g_data_mutex = xSemaphoreCreateMutex();
+    if(NULL == g_data_mutex) {
+        ESP_LOGE(SEMTAG, "g_data_mutex");
+        return ESP_FAIL;
+    }
     ESP_LOGI(SEMTAG, "%s OKAY", __func__);
     return ESP_OK;
 }
@@ -347,9 +354,9 @@ static void echo_task(void *arg)
 
             /* current high,low */
             if( 'h' == strchr(data, ',')[1] ) {
-                printf("STATUS: high\n");
+                printf("STATUS: ir-high\n");
             } else {
-                printf("STATUS: low\n");
+                printf("STATUS: ir-low\n");
                 /* 上次是下降沿的话不用更新 */
                 if( 0 == fallingTickCount) {
                     fallingTickCount = xTaskGetTickCount();
@@ -358,9 +365,9 @@ static void echo_task(void *arg)
             }
             /* initial high,low */
             if( 'h' == strchr(strchr(data, ',')+1, ',')[1] ) {
-                printf("initial: high\n");
+                printf("STATUS: ir-init-high\n");
             } else {
-                printf("initial: low\n");
+                printf("STATUS: ir-init-low\n");
 #if  0
                 /* 上次是下降沿的话不用更新 */
                 if( 0 == fallingTickCount) {
@@ -370,22 +377,26 @@ static void echo_task(void *arg)
 #endif
             }
             if('w' == strrchr(data, ',')[1]) {
-                printf("wuf: set\n");
+                printf("STATUS: wuf set\n");
                 wake_up_flag = true;
             } else {
-                printf("wuf: unset\n");
+                printf("STATUS: wuf unset\n");
                 wake_up_flag = false;
             }
 
             /* adc(battery percent) routine */
             adc_app_main_init();
             vPercent = adc_read_battery_percent();
+
+            /* mutex protected */
+            xSemaphoreTake(g_data_mutex, portMAX_DELAY);
             fix_battery_percent(&vPercent, &g_init_data.config_data.last_btry_percent);
             printf("vPercent = %d%%\n", vPercent);
             if(g_init_data.config_data.last_btry_percent != vPercent) {
                 g_init_data.config_data.last_btry_percent = vPercent;
                 store_init_data();
             }
+            xSemaphoreGive(g_data_mutex);
             if(0 == vPercent) {
                 /* 防止电池过放，低压关机 */
                 SET_LOG(low_battery);

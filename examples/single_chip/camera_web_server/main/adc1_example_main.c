@@ -32,16 +32,16 @@ static void check_efuse()
 {
     //Check TP is burned into eFuse
     if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_TP) == ESP_OK) {
-        printf("eFuse Two Point: Supported\n");
+        //printf("eFuse Two Point: Supported\n");
     } else {
-        printf("eFuse Two Point: NOT supported\n");
+        //printf("eFuse Two Point: NOT supported\n");
     }
 
     //Check Vref is burned into eFuse
     if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_VREF) == ESP_OK) {
-        printf("eFuse Vref: Supported\n");
+        //printf("eFuse Vref: Supported\n");
     } else {
-        printf("eFuse Vref: NOT supported\n");
+        //printf("eFuse Vref: NOT supported\n");
     }
 }
 
@@ -125,7 +125,7 @@ void adc_app_main_init(void)
     //Characterize ADC
     adc_chars = calloc(1, sizeof(esp_adc_cal_characteristics_t));
     esp_adc_cal_value_t val_type = esp_adc_cal_characterize(unit, atten, ADC_WIDTH_BIT_12, DEFAULT_VREF, adc_chars);
-    print_char_val_type(val_type);
+    //print_char_val_type(val_type);
 
 /*
     //Continuously sample ADC1
