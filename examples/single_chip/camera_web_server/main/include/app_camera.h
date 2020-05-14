@@ -161,6 +161,9 @@ typedef struct pic_queue
 void app_camera_main();
 int cam_power_down(void);
 
+extern bool is_connect_server;
+extern portMUX_TYPE is_connect_server_spinlock;
+
 #ifdef __cplusplus
 }
 #endif

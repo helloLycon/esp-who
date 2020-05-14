@@ -297,8 +297,11 @@ static void echo_task(void *arg)
             portENTER_CRITICAL(&max_sleep_uptime_spinlock);
             bool b = max_sleep_uptime==DEF_MAX_SLEEP_TIME;
             portEXIT_CRITICAL(&max_sleep_uptime_spinlock);
-            if(FALSE == is_connect && b && oneTime == false) {
-                printf("=-> NO WIFI, send shutdown request\n");
+            portENTER_CRITICAL(&is_connect_server_spinlock);
+            bool b1 = false == is_connect_server;
+            portEXIT_CRITICAL(&is_connect_server_spinlock);
+            if(b1 && b && oneTime == false) {
+                ESP_LOGE(TAG, "=-> NO WIFI/SERVER CONNECTED, send shutdown request\n");
                 run_log_write();
                 uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
                 oneTime = true;

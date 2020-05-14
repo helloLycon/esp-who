@@ -50,6 +50,9 @@ pic_queue *g_pic_queue_head = NULL;
 pic_queue *g_pic_queue_tail = NULL;
 bool g_camera_power = true;
 
+portMUX_TYPE is_connect_server_spinlock = portMUX_INITIALIZER_UNLOCKED;
+bool is_connect_server = false;
+
 static int send_jpeg(pic_queue *send_pic)
 {
     my_MD5_CTX md5;
@@ -342,6 +345,9 @@ void send_heartbeat_packet()
 
     if (ESP_OK == sock_ret)
     {
+        portENTER_CRITICAL(&is_connect_server_spinlock);
+        is_connect_server = true;
+        portEXIT_CRITICAL(&is_connect_server_spinlock);
         SET_LOG(connect_server);
         printf("file:%s, line:%d, begin send_data\r\n", __FILE__, __LINE__);
         ret = send_data(packet_send_data, false);
