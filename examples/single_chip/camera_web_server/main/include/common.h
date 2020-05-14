@@ -42,6 +42,7 @@
 #define CAMERA_VIDEO_TIME   10
 
 #define IR_VOL_UNSET      0
+#define LAST_BTRY_PERCENT_UNSET 0xffff
 
 #ifndef FALSE
 #define FALSE 0
@@ -64,6 +65,8 @@ typedef struct config_para{
     /* sntp->rtc */
     time_t last_sntp;
     uint32_t rtc_set;
+    /* last battery-percent */
+    uint16_t last_btry_percent;
 }config_para;
 
 /* 初始化参数 */
@@ -78,6 +81,8 @@ extern xSemaphoreHandle g_update_over;
 extern init_info g_init_data;
 extern portMUX_TYPE max_sleep_uptime_spinlock;
 extern portMUX_TYPE g_pic_send_over_spinlock;
+extern bool wake_up_flag;
+extern xSemaphoreHandle vpercent_ready;
 
 void upgrade_block(void) ;
 int led_gpio_init(void);

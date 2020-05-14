@@ -318,7 +318,8 @@ void send_heartbeat_packet()
     send_heartbeat_info heartbeat_data;
     packet_info packet_send_data;
 
-    heartbeat_data.battery = (uint16_t)adc_read_battery_percent();
+    xSemaphoreTake(vpercent_ready, portMAX_DELAY);
+    heartbeat_data.battery = vPercent;
     heartbeat_data.cur_time = time(NULL);
 
     packet_send_data.type = SEND_HEARTBEAT_CODE;
@@ -743,7 +744,6 @@ void app_camera_main ()
 //    printf("file:%s, line:%d, begin recv_data_task\r\n", __FILE__, __LINE__);
 //    xTaskCreate(&recv_data_task, "recv_data_task", 8192, NULL, 5, NULL);
     /* 创建任务发送图片 */
-    adc_app_main_init();
     xTaskCreate(&send_queue_pic_task, "send_queue_pic_task", 8192, NULL, 5, NULL);
     /* add by liuwenjian 2020-3-4 end */
 

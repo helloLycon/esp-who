@@ -19,12 +19,14 @@
 #include "common.h"
 
 #define DEFAULT_VREF    1100        //Use adc2_vref_to_gpio() to obtain a better estimate
-#define NO_OF_SAMPLES   64          //Multisampling
+#define NO_OF_SAMPLES   32          //Multisampling
 
 static esp_adc_cal_characteristics_t *adc_chars;
 static const adc_channel_t channel = ADC_CHANNEL_6;     //GPIO34 if ADC1, GPIO14 if ADC2
 static const adc_atten_t atten = ADC_ATTEN_DB_11;
 static const adc_unit_t unit = ADC_UNIT_1;
+
+uint16_t vPercent = 0;
 
 static void check_efuse()
 {
@@ -54,7 +56,7 @@ static void print_char_val_type(esp_adc_cal_value_t val_type)
     }
 }
 
-static int voltage_to_percent(int voltage_in_mV) {
+static uint16_t voltage_to_percent(int voltage_in_mV) {
     const int upper = 4050;
     const int lower = 3300;
     /* 0%: 3300mV/2, 100%: 4200mV/2 */
@@ -65,10 +67,10 @@ static int voltage_to_percent(int voltage_in_mV) {
         return 100;
     }
     /* (v*2-3300)/900*100 */
-    return (voltage_in_mV*200 - lower*100)/(upper - lower);
+    return (uint16_t)((voltage_in_mV*200 - lower*100)/(upper - lower));
 }
 
-int  adc_read_battery_percent(void) {
+uint16_t  adc_read_battery_percent(void) {
     uint32_t adc_reading = 0;
     //Multisampling
     for (int i = 0; i < NO_OF_SAMPLES; i++) {
@@ -83,18 +85,28 @@ int  adc_read_battery_percent(void) {
     adc_reading /= NO_OF_SAMPLES;
     //Convert adc_reading to voltage in mV
     uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_reading, adc_chars);
-    int percent = voltage_to_percent(voltage);
+    uint16_t percent = voltage_to_percent(voltage);
     printf("-----Raw: %d\tVoltage: %dmV percent=%d%%\n", adc_reading, voltage, percent);
 
-    if(0 == percent) {
-        /* 防止电池过放，低压关机 */
-        SET_LOG(low_battery);
-        upgrade_block();
-        printf("=-> low battery, send shutdown request\n");
-        run_log_write();
-        uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
-    }
     return percent;
+}
+
+bool fix_battery_percent(uint16_t *current_value, const uint16_t *prev_value) {
+    if(LAST_BTRY_PERCENT_UNSET == *prev_value) {
+        printf("battery percent unset\n");
+        return false;
+    }
+    if(false == wake_up_flag) {
+        printf("no wup, first power on\n");
+        return false;
+    }
+
+    if(*current_value > *prev_value) {
+        *current_value = *prev_value;
+        printf("fix battery percent to %d%%\n", *current_value);
+        return true;
+    }
+    return false;
 }
 
 void adc_app_main_init(void)

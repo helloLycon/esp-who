@@ -65,7 +65,8 @@ init_info g_init_data;
 portMUX_TYPE max_sleep_uptime_spinlock = portMUX_INITIALIZER_UNLOCKED;
 int max_sleep_uptime = DEF_MAX_SLEEP_TIME;
 
-bool rtc_set_magic_match;
+xSemaphoreHandle vpercent_ready;
+bool rtc_set_magic_match, wake_up_flag;
 
 int semaphoreInit(void) {
     g_update_over = xSemaphoreCreateCounting(100, 0);
@@ -73,6 +74,13 @@ int semaphoreInit(void) {
         ESP_LOGE(SEMTAG, "g_update_over");
         return ESP_FAIL;
     }
+
+    vpercent_ready = xSemaphoreCreateCounting(1, 0);
+    if(NULL == vpercent_ready) {
+        ESP_LOGE(SEMTAG, "vpercent_ready");
+        return ESP_FAIL;
+    }
+
     ESP_LOGI(SEMTAG, "%s OKAY", __func__);
     return ESP_OK;
 }
@@ -122,14 +130,14 @@ esp_err_t store_init_data(void)
 }
 
 
-/* add by liuwenjian 2020-3-4 begin */
+/* 如果config_para结构发生改变，先 "make erase" */
 void init_para(bool erase_all)
 {
     bool fix = false;
     nvs_handle my_handle;
     esp_err_t err;
     
-    memset(&g_init_data, 0, sizeof(config_para));
+    memset(&g_init_data, 0, sizeof(init_info));
 
     /* 打开nvs 文件系统 */
     err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
@@ -163,6 +171,8 @@ void init_para(bool erase_all)
         strcpy(g_init_data.config_data.wifi_ap_ssid, EXAMPLE_ESP_WIFI_AP_SSID);
         strcpy(g_init_data.config_data.wifi_ap_key, EXAMPLE_ESP_WIFI_AP_PASS);
         g_init_data.config_data.ir_voltage = IR_VOL_UNSET;
+        g_init_data.config_data.rtc_set = 0;
+        g_init_data.config_data.last_btry_percent = LAST_BTRY_PERCENT_UNSET;
     }
 
     if (0 == g_init_data.config_data.service_port)
@@ -208,6 +218,21 @@ void init_para(bool erase_all)
     } else {
         rtc_set_magic_match = true;
     }
+    if(g_init_data.config_data.last_btry_percent>100) {
+        g_init_data.config_data.last_btry_percent = LAST_BTRY_PERCENT_UNSET;
+    }
+
+#if  0
+    /* 电量百分比 */
+    adc_app_main_init();
+    vPercent = adc_read_battery_percent();
+    fix_battery_percent(&vPercent, &g_init_data.config_data.last_btry_percent);
+    printf("vPercent = %d%%\n", vPercent);
+    if(g_init_data.config_data.last_btry_percent != vPercent) {
+        g_init_data.config_data.last_btry_percent = vPercent;
+        fix = true;
+    }
+#endif
 
     printf("file:%s, line:%d, DevId = %s, g_init_data.service_ip_str = %s, g_init_data.service_ip_str[0] = %d\r\n", 
         __FILE__, __LINE__, g_init_data.config_data.device_id, g_init_data.config_data.service_ip_str, g_init_data.config_data.service_ip_str[0]);
@@ -320,7 +345,7 @@ static void echo_task(void *arg)
                 printf("STATUS: ir\n");
             }
 
-            /* high,low */
+            /* current high,low */
             if( 'h' == strchr(data, ',')[1] ) {
                 printf("STATUS: high\n");
             } else {
@@ -331,6 +356,46 @@ static void echo_task(void *arg)
                 }
                 printf("=> ir low level(act as falling edge)\n");
             }
+            /* initial high,low */
+            if( 'h' == strchr(strchr(data, ',')+1, ',')[1] ) {
+                printf("initial: high\n");
+            } else {
+                printf("initial: low\n");
+#if  0
+                /* 上次是下降沿的话不用更新 */
+                if( 0 == fallingTickCount) {
+                    fallingTickCount = xTaskGetTickCount();
+                }
+                printf("=> ir low level(act as falling edge)\n");
+#endif
+            }
+            if('w' == strrchr(data, ',')[1]) {
+                printf("wuf: set\n");
+                wake_up_flag = true;
+            } else {
+                printf("wuf: unset\n");
+                wake_up_flag = false;
+            }
+
+            /* adc(battery percent) routine */
+            adc_app_main_init();
+            vPercent = adc_read_battery_percent();
+            fix_battery_percent(&vPercent, &g_init_data.config_data.last_btry_percent);
+            printf("vPercent = %d%%\n", vPercent);
+            if(g_init_data.config_data.last_btry_percent != vPercent) {
+                g_init_data.config_data.last_btry_percent = vPercent;
+                store_init_data();
+            }
+            if(0 == vPercent) {
+                /* 防止电池过放，低压关机 */
+                SET_LOG(low_battery);
+                upgrade_block();
+                printf("=-> low battery, send shutdown request\n");
+                run_log_write();
+                uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
+                continue;
+            }
+            xSemaphoreGive(vpercent_ready);
         }
         else if(strstr(data, CAMERA_POWER_DOWN_OK)) {
             extern bool g_camera_power;
