@@ -5,6 +5,8 @@
    software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
    CONDITIONS OF ANY KIND, either express or implied.
 */
+#ifndef __GATTS_TABLE_CREAT_DEMO_H
+#define __GATTS_TABLE_CREAT_DEMO_H
 
 
 #include <stdio.h>
@@ -18,7 +20,7 @@ enum
     IDX_SVC,
     IDX_CHAR_A,
     IDX_CHAR_VAL_A,
-    IDX_CHAR_CFG_A,
+    //IDX_CHAR_CFG_A,
 
     IDX_CHAR_B,
     IDX_CHAR_VAL_B,
@@ -28,3 +30,8 @@ enum
 
     HRS_IDX_NB,
 };
+
+void gatts_init();
+
+
+#endif

@@ -451,7 +451,7 @@ void app_wifi_main()
 //    printf("file:%s, line:%d, begin simple_ota_example_task\r\n", __FILE__, __LINE__);
     /* add by liuwenjian 2020-3-4 begin */
     /* ota Éý¼¶ */
-    xTaskCreate(&simple_ota_example_task, "ota_example_task", 8192, NULL, 5, NULL);
+    xTaskCreate(&simple_ota_example_task, "ota_example_task", 4096, NULL, 5, NULL);
     /* add by liuwenjian 2020-3-4 end */
 }
 

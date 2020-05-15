@@ -749,11 +749,11 @@ void app_camera_main ()
 //    printf("file:%s, line:%d, begin get_camera_data_task, time = %ld\r\n", __FILE__, __LINE__, time(NULL));
     /* add by liuwenjian 2020-3-4 begin */
     /* 创建任务摄像头开始录制 */
-    xTaskCreate(&get_camera_data_task, "get_camera_data_task", 8192, NULL, 4, NULL);
+    xTaskCreate(&get_camera_data_task, "get_camera_data_task", 4096, NULL, 4, NULL);
 //    printf("file:%s, line:%d, begin recv_data_task\r\n", __FILE__, __LINE__);
 //    xTaskCreate(&recv_data_task, "recv_data_task", 8192, NULL, 5, NULL);
     /* 创建任务发送图片 */
-    xTaskCreate(&send_queue_pic_task, "send_queue_pic_task", 8192, NULL, 5, NULL);
+    xTaskCreate(&send_queue_pic_task, "send_queue_pic_task", 2048, NULL, 5, NULL);
     /* add by liuwenjian 2020-3-4 end */
 
 //    stream_send();

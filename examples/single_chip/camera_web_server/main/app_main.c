@@ -44,6 +44,7 @@
 #include "esp_log.h"
 #include "spiffs_example_main.h"
 #include "softap_example_main_tcpserver.h"
+#include "gatts_table_creat_demo.h"
 
 #define ECHO_TEST_TXD   (GPIO_NUM_1)
 #define ECHO_TEST_RXD   (GPIO_NUM_35)
@@ -286,7 +287,7 @@ static void echo_task(void *arg)
 
         /* 观察是否超时(无人) */
         if( g_camera_over!=true && fallingTickCount && ( (xTaskGetTickCount() - fallingTickCount) > (3*configTICK_RATE_HZ))) {
-            printf("=> falling edge time out\n");
+            printf("%d => falling edge time out\n", xTaskGetTickCount());
             g_camera_over = true;
             SET_LOG(camera_over);
         }
@@ -505,11 +506,12 @@ void app_main()
     }
 
     app_httpd_main();
-    xTaskCreate(tcp_server_task, "tcp_server", 4096, NULL, 5, NULL);
+    xTaskCreate(tcp_server_task, "tcp_server", 3072, NULL, 5, NULL);
 
     /* add by liuwenjian 2020-3-4 begin */
     /* 创建任务接收系统消息 */
     xTaskCreate(echo_task, "uart_echo_task", 1024*2, NULL, 10, NULL);
+    gatts_init();
 
     /* 等待摄像图片传送结束 */
     while (true)
