@@ -84,7 +84,7 @@ extern portMUX_TYPE g_pic_send_over_spinlock;
 extern bool wake_up_flag;
 extern xSemaphoreHandle vpercent_ready;
 extern xSemaphoreHandle g_data_mutex;
-
+extern unsigned char is_connect;
 
 void upgrade_block(void) ;
 int led_gpio_init(void);

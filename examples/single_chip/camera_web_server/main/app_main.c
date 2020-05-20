@@ -100,7 +100,9 @@ void nop(void) {
 }
 
 void upgrade_block(void) {
-    xSemaphoreTake(g_update_over, portMAX_DELAY);
+    if(is_connect) {
+        xSemaphoreTake(g_update_over, portMAX_DELAY);
+    }
 }
 
 esp_err_t store_init_data(void)
@@ -529,7 +531,9 @@ void app_main()
     /* exceed max uptime, timeout */
 
     /* µÈ´ýÉý¼¶½áÊø */
-    xSemaphoreTake(g_update_over, portMAX_DELAY);
+    if(is_connect) {
+        xSemaphoreTake(g_update_over, portMAX_DELAY);
+    }
 
     run_log_write();
     /*
