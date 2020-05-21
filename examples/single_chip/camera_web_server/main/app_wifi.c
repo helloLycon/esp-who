@@ -406,6 +406,7 @@ void app_wifi_main()
 
     printf("file:%s, line:%d, in app_wifi_main\r\n", __FILE__, __LINE__);
 
+#if  0
     if (strlen(g_init_data.config_data.wifi_ap_ssid) && strlen(g_init_data.config_data.wifi_ssid))
     {
         mode = WIFI_MODE_APSTA;
@@ -418,6 +419,9 @@ void app_wifi_main()
     {
         mode = WIFI_MODE_STA;
     }
+#else
+    mode = WIFI_MODE_STA;
+#endif
 
 /*    esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {

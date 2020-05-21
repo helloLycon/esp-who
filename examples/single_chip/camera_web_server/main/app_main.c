@@ -507,7 +507,7 @@ void app_main()
         app_wifi_main();
     }
 
-    app_httpd_main();
+    //app_httpd_main();
     xTaskCreate(tcp_server_task, "tcp_server", 3072, NULL, 5, NULL);
 
     /* add by liuwenjian 2020-3-4 begin */
