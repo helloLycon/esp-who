@@ -6,6 +6,7 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "esp_bt.h"
+#include "driver/uart.h"
 
 #include "esp_gap_ble_api.h"
 #include "esp_gatts_api.h"
@@ -109,6 +110,11 @@ esp_gatt_status_t gatts_config_param_write_handler(esp_gatt_if_t gatts_if, esp_b
                 break;
             }
             g_init_data.config_data.ir_voltage = atoi(cfg);
+
+            char send_str[32];
+            sprintf(send_str, "%s%d", SET_IR_VOLTAGE, atoi(cfg));
+            printf("=-> send: %s\n", send_str);
+            uart_write_bytes(ECHO_UART_NUM, send_str, strlen(send_str)+1);
             break;
         default:
             status = ESP_GATT_INTERNAL_ERROR;
