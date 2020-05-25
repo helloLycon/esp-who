@@ -138,7 +138,7 @@ static int send_jpeg(pic_queue *send_pic)
                     packet_send_data.type = SEND_FACE_PIC_CODE;
                     
     //                printf("file:%s, line:%d, begin send_data\r\n", __FILE__, __LINE__);
-                    printf("%d send: sn = %d\n", xTaskGetTickCount(), jpeg_data.num);
+                    printf("%d send: sn = %d size=%d\n", xTaskGetTickCount(), jpeg_data.num, send_pic->pic_len);
                     ret = send_data(packet_send_data, true);
                     if (CAMERA_OK != ret)
                     {
@@ -697,7 +697,7 @@ void app_camera_main ()
     //init with high specs to pre-allocate larger buffers
     config.frame_size = FRAMESIZE_UXGA;
 //    config.frame_size = 8;
-    config.jpeg_quality = 10;
+    config.jpeg_quality = 30;
     config.fb_count = 2;
 //    printf("file:%s, line:%d, in app_camera_main, time = %ld\r\n", __FILE__, __LINE__, time(NULL));
 
