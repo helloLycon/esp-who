@@ -35,6 +35,8 @@
 #include "driver/rtc_io.h"
 //#include "esp_spiffs.h"
 #include "esp_system.h"
+#include "esp_wifi.h"
+#include "esp_camera.h"
 #include "nvs_flash.h"
 #include "nvs.h"
 #include "common.h"
@@ -350,7 +352,25 @@ static void echo_task(void *arg)
             /* key/ir */
             if( 'k' == data[strlen(REC_STATUS)] ) {
                 /* key */
-                printf("STATUS: key\n");
+                printf("STATUS: key, enter BT-CONFIGURATION mode...\n");
+                vTaskDelete(simple_ota_example_task_handle);
+                vTaskDelete(send_queue_pic_task_handle);
+                vTaskDelete(get_camera_data_task_handle);
+                esp_err_t err = esp_wifi_stop();
+                if(err != ESP_OK) {
+                    ESP_LOGE(TAG, "esp_wifi_stop failed");
+                }
+                err = esp_wifi_deinit();
+                if(err != ESP_OK) {
+                    ESP_LOGE(TAG, "esp_wifi_deinit failed");
+                }
+                err = esp_camera_deinit();
+                if(err != ESP_OK) {
+                    ESP_LOGE(TAG, "esp_camera_deinit failed");
+                }
+                /* start bt */
+                gatts_init();
+
                 portENTER_CRITICAL(&max_sleep_uptime_spinlock);
                 max_sleep_uptime = DEF_MAX_SLEEP_TIME+60;
                 portEXIT_CRITICAL(&max_sleep_uptime_spinlock);
@@ -513,7 +533,6 @@ void app_main()
     /* add by liuwenjian 2020-3-4 begin */
     /* 创建任务接收系统消息 */
     xTaskCreate(echo_task, "uart_echo_task", 1024*2, NULL, 10, NULL);
-    gatts_init();
 
     /* 等待摄像图片传送结束 */
     while (true)

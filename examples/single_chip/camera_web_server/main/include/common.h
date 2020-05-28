@@ -85,6 +85,9 @@ extern bool wake_up_flag;
 extern xSemaphoreHandle vpercent_ready;
 extern xSemaphoreHandle g_data_mutex;
 extern unsigned char is_connect;
+extern TaskHandle_t get_camera_data_task_handle;
+extern TaskHandle_t send_queue_pic_task_handle;
+extern TaskHandle_t simple_ota_example_task_handle;
 
 void upgrade_block(void) ;
 int led_gpio_init(void);

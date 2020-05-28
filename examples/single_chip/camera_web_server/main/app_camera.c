@@ -53,6 +53,9 @@ bool g_camera_power = true;
 portMUX_TYPE is_connect_server_spinlock = portMUX_INITIALIZER_UNLOCKED;
 bool is_connect_server = false;
 
+TaskHandle_t get_camera_data_task_handle;
+TaskHandle_t send_queue_pic_task_handle;
+
 static int send_jpeg(pic_queue *send_pic)
 {
     my_MD5_CTX md5;
@@ -749,11 +752,11 @@ void app_camera_main ()
 //    printf("file:%s, line:%d, begin get_camera_data_task, time = %ld\r\n", __FILE__, __LINE__, time(NULL));
     /* add by liuwenjian 2020-3-4 begin */
     /* 创建任务摄像头开始录制 */
-    xTaskCreate(&get_camera_data_task, "get_camera_data_task", 4096, NULL, 4, NULL);
+    xTaskCreate(&get_camera_data_task, "get_camera_data_task", 4096, NULL, 4, &get_camera_data_task_handle);
 //    printf("file:%s, line:%d, begin recv_data_task\r\n", __FILE__, __LINE__);
 //    xTaskCreate(&recv_data_task, "recv_data_task", 8192, NULL, 5, NULL);
     /* 创建任务发送图片 */
-    xTaskCreate(&send_queue_pic_task, "send_queue_pic_task", 3072, NULL, 5, NULL);
+    xTaskCreate(&send_queue_pic_task, "send_queue_pic_task", 3072, NULL, 5, &send_queue_pic_task_handle);
     /* add by liuwenjian 2020-3-4 end */
 
 //    stream_send();

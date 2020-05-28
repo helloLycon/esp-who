@@ -61,6 +61,8 @@ extern const uint8_t server_cert_pem_end[] asm("_binary_ca_cert_pem_end");
 static int s_retry_num = 0;
 unsigned char is_connect = FALSE;
 
+TaskHandle_t simple_ota_example_task_handle;
+
 static esp_err_t event_handler(void *ctx, system_event_t *event)
 {
 //    printf("file:%s, line:%d, in event_handler, event->event_id = %d\r\n", __FILE__, __LINE__, event->event_id);
@@ -455,7 +457,7 @@ void app_wifi_main()
 //    printf("file:%s, line:%d, begin simple_ota_example_task\r\n", __FILE__, __LINE__);
     /* add by liuwenjian 2020-3-4 begin */
     /* ota Éý¼¶ */
-    xTaskCreate(&simple_ota_example_task, "ota_example_task", 4096, NULL, 5, NULL);
+    xTaskCreate(&simple_ota_example_task, "ota_example_task", 4096, NULL, 5, &simple_ota_example_task_handle);
     /* add by liuwenjian 2020-3-4 end */
 }
 
