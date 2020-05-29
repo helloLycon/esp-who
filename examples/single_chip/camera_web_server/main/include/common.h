@@ -8,7 +8,7 @@
 #define DEVICE_ID_FLAG      "device_id"
 #define SERVICE_IP_FLAG     "service_ip"
 #define SERVICE_PORT_FLAG   "service_port"
-#define TCP_SERVER_ADRESS   "10.10.1.238"     //×÷Îªclient£¬ÒªÁ¬½ÓTCP·şÎñÆ÷µØÖ·
+#define TCP_SERVER_ADRESS   "10.10.1.238"     //ä½œä¸ºclientï¼Œè¦è¿æ¥TCPæœåŠ¡å™¨åœ°å€
 #define DEVICE_INFO         "123456"
 #define CAMERA_OVER         "airbat\tover\r\n"
 #define CAMERA_STOP         "airbat\tpass\r\n"
@@ -22,23 +22,23 @@
 #define APP_PACKET_DATA_LEN  (1024*20)
 
 
-/*ºËĞÄ°åÃüÁîÂë*/
-#define CORE_SHUT_DOWN_REQ   "~shutdown_coreboard_request"  //ºËĞÄ°å·¢³ö¹Ø»úÇëÇó
-#define CORE_SHUT_DOWN       "~shutdown_coreboard_cmd"      //Ö÷¿Ømcu·¢³ö¹Ø»úÃüÁî
-#define CORE_SHUT_DOWN_OK    "~coreboard_shutdown_ok"       //ºËĞÄ°å¹Ø»úÍê³É
-#define IR_WKUP_PIN_RISING   "~ir_wkup_pin_rising"              //»½ĞÑ½ÅÉÏÉıÑØ£¬ÓĞÈËÒÆ¶¯
-#define IR_WKUP_PIN_FALLING  "~ir_wkup_pin_falling"            //»½ĞÑ½ÅÏÂ½µÑØ£¬Ã»ÈËÒÆ¶¯
-#define SET_IR_VOLTAGE       "~set_ir_voltage="             //ÅäÖÃºìÍâµÆ¿ØÖÆµçÑ¹·§Öµ
+/*æ ¸å¿ƒæ¿å‘½ä»¤ç */
+#define CORE_SHUT_DOWN_REQ   "~shutdown_coreboard_request"  //æ ¸å¿ƒæ¿å‘å‡ºå…³æœºè¯·æ±‚
+#define CORE_SHUT_DOWN       "~shutdown_coreboard_cmd"      //ä¸»æ§mcuå‘å‡ºå…³æœºå‘½ä»¤
+#define CORE_SHUT_DOWN_OK    "~coreboard_shutdown_ok"       //æ ¸å¿ƒæ¿å…³æœºå®Œæˆ
+#define IR_WKUP_PIN_RISING   "~ir_wkup_pin_rising"              //å”¤é†’è„šä¸Šå‡æ²¿ï¼Œæœ‰äººç§»åŠ¨
+#define IR_WKUP_PIN_FALLING  "~ir_wkup_pin_falling"            //å”¤é†’è„šä¸‹é™æ²¿ï¼Œæ²¡äººç§»åŠ¨
+#define SET_IR_VOLTAGE       "~set_ir_voltage="             //é…ç½®çº¢å¤–ç¯æ§åˆ¶ç”µå‹é˜€å€¼
 #define SET_IR_VOLTAGE_SUC   "~set_ir_voltage_suc"
 #define SET_IR_VOLTAGE_FAIL  "~set_ir_voltage_fail"
-#define GET_STATUS    "~get_status"                           //»ñÈ¡×´Ì¬
-#define REC_STATUS  "~rec_status="                          //·µ»Ø×´Ì¬~status=»½ĞÑÀ´Ô´£¬ÒÆ¶¯Õì²âio×´Ì¬£¬~rec_status=key(ir),high(low)
-#define KEY_WKUP_PIN_RISING  "~key_wkup_pin_rising"    //°´¼ü»½ĞÑ½ÅÉÏÉıÑØ£¬ÓĞ°´¼üÊÂ¼ş
+#define GET_STATUS    "~get_status"                           //è·å–çŠ¶æ€
+#define REC_STATUS  "~rec_status="                          //è¿”å›çŠ¶æ€~status=å”¤é†’æ¥æºï¼Œç§»åŠ¨ä¾¦æµ‹ioçŠ¶æ€ï¼Œ~rec_status=key(ir),high(low)
+#define KEY_WKUP_PIN_RISING  "~key_wkup_pin_rising"    //æŒ‰é”®å”¤é†’è„šä¸Šå‡æ²¿ï¼Œæœ‰æŒ‰é”®äº‹ä»¶
 #define CAMERA_POWER_DOWN_REQ    "~camera_power_down_req"
 #define CAMERA_POWER_DOWN_OK    "~camera_power_down_ok"
 
 
-#define TCP_PORT            10086               //Í³Ò»µÄ¶Ë¿ÚºÅ£¬°üÀ¨TCP¿Í»§¶Ë»òÕß·şÎñ¶Ë
+#define TCP_PORT            10086               //ç»Ÿä¸€çš„ç«¯å£å·ï¼ŒåŒ…æ‹¬TCPå®¢æˆ·ç«¯æˆ–è€…æœåŠ¡ç«¯
 #define CAMERA_VIDEO_TIME   10
 
 #define IR_VOL_UNSET      0
@@ -52,11 +52,11 @@
 #define TRUE 1
 #endif
 
-/* ÅäÖÃ²ÎÊı */
+/* é…ç½®å‚æ•° */
 typedef struct config_para{
-    unsigned short service_port;    /* ·şÎñÆ÷¶Ë¿ÚºÅ */
-    char service_ip_str[16];        /* ·şÎñÆ÷ip µØÖ· */
-    char device_id[64];             /* Éè±¸±àºÅ */
+    unsigned short service_port;    /* æœåŠ¡å™¨ç«¯å£å· */
+    char service_ip_str[16];        /* æœåŠ¡å™¨ip åœ°å€ */
+    char device_id[64];             /* è®¾å¤‡ç¼–å· */
     char wifi_ssid[64];
     char wifi_key[32];
     char wifi_ap_ssid[64];
@@ -69,10 +69,10 @@ typedef struct config_para{
     uint16_t last_btry_percent;
 }config_para;
 
-/* ³õÊ¼»¯²ÎÊı */
+/* åˆå§‹åŒ–å‚æ•° */
 typedef struct init_info{
-    config_para config_data;        /* ÅäÖÃ²ÎÊı */
-    time_t start_time;              /* Æô¶¯Ê±¼ä */
+    config_para config_data;        /* é…ç½®å‚æ•° */
+    time_t start_time;              /* å¯åŠ¨æ—¶é—´ */
 }init_info;
 
 extern bool g_camera_over;

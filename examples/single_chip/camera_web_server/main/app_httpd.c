@@ -678,7 +678,7 @@ static esp_err_t stream_handler(httpd_req_t *req)
 }
 
 /* add by liuwenjian 2020-3-4 begin */
-/* ÅäÖÃÉè±¸»ù±¾ĞÅÏ¢ */
+/* é…ç½®è®¾å¤‡åŸºæœ¬ä¿¡æ¯ */
 static esp_err_t update_config(char *type, char *value)
 {
     nvs_handle my_handle;
@@ -832,28 +832,28 @@ static esp_err_t cmd_handler(httpd_req_t *req)
     {
         if (s->pixformat == PIXFORMAT_JPEG)
         {
-            /* ÉèÖÃÏñËØ */
+            /* è®¾ç½®åƒç´  */
             res = s->set_framesize(s, (framesize_t)val);
         }
     }
     /* add by liuwenjian 2020-3-4 begin */
     else if (!strcmp(variable, DEVICE_ID_FLAG))
     {
-        /* Éè±¸±àºÅÅäÖÃ */
+        /* è®¾å¤‡ç¼–å·é…ç½® */
         printf("file:%s, line:%d, variable = %s, value = %s\r\n", 
             __FILE__, __LINE__, variable, value);
         res = update_config(DEVICE_ID_FLAG, value);
     }
     else if (!strcmp(variable, SERVICE_IP_FLAG))
     {
-        /* ·şÎñÆ÷ip ÅäÖÃ */
+        /* æœåŠ¡å™¨ip é…ç½® */
         printf("file:%s, line:%d, variable = %s, value = %s\r\n", 
             __FILE__, __LINE__, variable, value);
         res = update_config(SERVICE_IP_FLAG, value);
     }
     else if (!strcmp(variable, SERVICE_PORT_FLAG))
     {
-        /* ·şÎñÆ÷¶Ë¿ÚºÅÅäÖÃ */
+        /* æœåŠ¡å™¨ç«¯å£å·é…ç½® */
         printf("file:%s, line:%d, variable = %s, value = %s\r\n", 
             __FILE__, __LINE__, variable, value);
         res = update_config(SERVICE_PORT_FLAG, value);
@@ -861,35 +861,35 @@ static esp_err_t cmd_handler(httpd_req_t *req)
     /* add by liuwenjian 2020-3-4 end */
     else if (!strcmp(variable, "wifi_ssid"))
     {
-        /* Éè±¸±àºÅÅäÖÃ */
+        /* è®¾å¤‡ç¼–å·é…ç½® */
         printf("file:%s, line:%d, variable = %s, value = %s\r\n", 
             __FILE__, __LINE__, variable, value);
         res = update_config("wifi_ssid", value);
     }
     else if (!strcmp(variable, "wifi_key"))
     {
-        /* Éè±¸±àºÅÅäÖÃ */
+        /* è®¾å¤‡ç¼–å·é…ç½® */
         printf("file:%s, line:%d, variable = %s, value = %s\r\n", 
             __FILE__, __LINE__, variable, value);
         res = update_config("wifi_key", value);
     }
     else if (!strcmp(variable, "wifi_ap_ssid"))
     {
-        /* Éè±¸±àºÅÅäÖÃ */
+        /* è®¾å¤‡ç¼–å·é…ç½® */
         printf("file:%s, line:%d, variable = %s, value = %s\r\n", 
             __FILE__, __LINE__, variable, value);
         res = update_config("wifi_ap_ssid", value);
     }
     else if (!strcmp(variable, "wifi_ap_key"))
     {
-        /* Éè±¸±àºÅÅäÖÃ */
+        /* è®¾å¤‡ç¼–å·é…ç½® */
         printf("file:%s, line:%d, variable = %s, value = %s\r\n", 
             __FILE__, __LINE__, variable, value);
         res = update_config("wifi_ap_key", value);
     }
     else if (!strcmp(variable, "ir_voltage"))
     {
-        /* Éè±¸±àºÅÅäÖÃ */
+        /* è®¾å¤‡ç¼–å·é…ç½® */
         printf("file:%s, line:%d, variable = %s, value = %s\r\n", 
             __FILE__, __LINE__, variable, value);
         res = update_config("ir_voltage", value);

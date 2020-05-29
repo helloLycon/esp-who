@@ -17,21 +17,21 @@ extern "C" {
 #define TRUE (!FALSE)
 #endif
 
-//#define TCP_SERVER_CLIENT_OPTION FALSE              //esp32×÷Îªclient
-#define TCP_SERVER_CLIENT_OPTION TRUE              //esp32×÷Îªserver
+//#define TCP_SERVER_CLIENT_OPTION FALSE              //esp32ä½œä¸ºclient
+#define TCP_SERVER_CLIENT_OPTION TRUE              //esp32ä½œä¸ºserver
 
-//#define TAG                     "HX-TCP"            //´òÓ¡µÄtag
+//#define TAG                     "HX-TCP"            //æ‰“å°çš„tag
 
 //server
-//APÈÈµãÄ£Ê½µÄÅäÖÃĞÅÏ¢
-#define SOFT_AP_SSID            "HX-TCP-SERVER"     //ÕËºÅ
-#define SOFT_AP_PAS             ""          //ÃÜÂë£¬¿ÉÒÔÎª¿Õ
-#define SOFT_AP_MAX_CONNECT     1                   //×î¶àµÄÁ¬½Óµã
+//APçƒ­ç‚¹æ¨¡å¼çš„é…ç½®ä¿¡æ¯
+#define SOFT_AP_SSID            "HX-TCP-SERVER"     //è´¦å·
+#define SOFT_AP_PAS             ""          //å¯†ç ï¼Œå¯ä»¥ä¸ºç©º
+#define SOFT_AP_MAX_CONNECT     1                   //æœ€å¤šçš„è¿æ¥ç‚¹
 
 //client
-//STAÄ£Ê½ÅäÖÃĞÅÏ¢,¼´ÒªÁ¬ÉÏµÄÂ·ÓÉÆ÷µÄÕËºÅÃÜÂë
-#define GATEWAY_SSID            "Massky_AP"         //ÕËºÅ
-#define GATEWAY_PAS             "ztl62066206"       //ÃÜÂë
+//STAæ¨¡å¼é…ç½®ä¿¡æ¯,å³è¦è¿ä¸Šçš„è·¯ç”±å™¨çš„è´¦å·å¯†ç 
+#define GATEWAY_SSID            "Massky_AP"         //è´¦å·
+#define GATEWAY_PAS             "ztl62066206"       //å¯†ç 
 #define PACKET_HEAD             0x55aa
 #define PACKET_VERSION          0x10
 #define SEND_FACE_PIC_CODE      0x22
@@ -44,26 +44,26 @@ extern "C" {
 extern int  g_total_data;
 extern bool g_rxtx_need_restart;
 
-/* ·¢ËÍĞÄÌø±¨ÎÄÊı¾İ */
+/* å‘é€å¿ƒè·³æŠ¥æ–‡æ•°æ® */
 typedef struct send_heartbeat_info{
-    unsigned short battery;     /* Ê£ÓàµçÁ¿ */
-    time_t cur_time;            /* µ±Ç°Ê±¼ä */
+    unsigned short battery;     /* å‰©ä½™ç”µé‡ */
+    time_t cur_time;            /* å½“å‰æ—¶é—´ */
 }send_heartbeat_info;
 
-/* ·¢ËÍjpeg ¾ßÌåÊı¾İ */
+/* å‘é€jpeg å…·ä½“æ•°æ® */
 typedef struct send_jpeg_info{
-    unsigned short num;         /* Í¼Æ¬±àºÅ */
-    unsigned long send_count;   /* Í¼Æ¬Æ«ÒÆÁ¿ */
-    time_t create_time;         /* Í¼Æ¬´´½¨Ê±¼ä */
-    unsigned char *buf;         /* Í¼Æ¬ÄÚÈİ */
+    unsigned short num;         /* å›¾ç‰‡ç¼–å· */
+    unsigned long send_count;   /* å›¾ç‰‡åç§»é‡ */
+    time_t create_time;         /* å›¾ç‰‡åˆ›å»ºæ—¶é—´ */
+    unsigned char *buf;         /* å›¾ç‰‡å†…å®¹ */
 }send_jpeg_info;
 
-/* ±¨ÎÄ·¢ËÍĞÅÏ¢ */
+/* æŠ¥æ–‡å‘é€ä¿¡æ¯ */
 typedef struct packet_info{
-    unsigned char status;       /* ±¨ÎÄ·¢ËÍ×´Ì¬ */
-    unsigned short type;        /* ·¢ËÍ±¨ÎÄÀàĞÍ */
-    unsigned short send_len;    /* ·¢ËÍÊı¾İ´óĞ¡ */
-    void *data;                 /* ¾ßÌåÊı¾İ */
+    unsigned char status;       /* æŠ¥æ–‡å‘é€çŠ¶æ€ */
+    unsigned short type;        /* å‘é€æŠ¥æ–‡ç±»å‹ */
+    unsigned short send_len;    /* å‘é€æ•°æ®å¤§å° */
+    void *data;                 /* å…·ä½“æ•°æ® */
 }packet_info;
 
 //using esp as station

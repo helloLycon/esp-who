@@ -142,7 +142,7 @@ esp_err_t store_init_data(void)
 }
 
 
-/* Èç¹ûconfig_para½á¹¹·¢Éú¸Ä±ä£¬ÏÈ "make erase" */
+/* å¦‚æœconfig_paraç»“æ„å‘ç”Ÿæ”¹å˜ï¼Œå…ˆ "make erase" */
 void init_para(bool erase_all)
 {
     bool fix = false;
@@ -151,7 +151,7 @@ void init_para(bool erase_all)
     
     memset(&g_init_data, 0, sizeof(init_info));
 
-    /* ´ò¿ªnvs ÎÄ¼şÏµÍ³ */
+    /* æ‰“å¼€nvs æ–‡ä»¶ç³»ç»Ÿ */
     err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
     if (err != ESP_OK)
     {
@@ -166,7 +166,7 @@ void init_para(bool erase_all)
         nvs_commit(my_handle);
     }
 
-    /* »ñÈ¡Éè±¸»ù±¾ÅäÖÃ */
+    /* è·å–è®¾å¤‡åŸºæœ¬é…ç½® */
     // Read run time blob
     size_t required_size = sizeof(config_para);  // value will default to 0, if not set yet in NVS
     // obtain required memory space to store blob being read from NVS
@@ -235,7 +235,7 @@ void init_para(bool erase_all)
     }
 
 #if  0
-    /* µçÁ¿°Ù·Ö±È */
+    /* ç”µé‡ç™¾åˆ†æ¯” */
     adc_app_main_init();
     vPercent = adc_read_battery_percent();
     fix_battery_percent(&vPercent, &g_init_data.config_data.last_btry_percent);
@@ -289,16 +289,16 @@ static void echo_task(void *arg)
         // Read data from the UART
         int len = uart_read_bytes(ECHO_UART_NUM, (uint8_t *)data, BUF_SIZE, 20 / portTICK_RATE_MS);
 
-        /* ¹Û²ìÊÇ·ñ³¬Ê±(ÎŞÈË) */
+        /* è§‚å¯Ÿæ˜¯å¦è¶…æ—¶(æ— äºº) */
         if( g_camera_over!=true && fallingTickCount && ( (xTaskGetTickCount() - fallingTickCount) > (3*configTICK_RATE_HZ))) {
             printf("%d => falling edge time out\n", xTaskGetTickCount());
             g_camera_over = true;
             SET_LOG(camera_over);
         }
-        /* ¼ì²éwifiÁ¬½Ó */
+        /* æ£€æŸ¥wifiè¿æ¥ */
         if( xTaskGetTickCount() >= (10*configTICK_RATE_HZ)) {
             static bool oneTime = false;
-            /* Î´Á¬½Ó£¬ÎŞÓÃ»§ÉèÖÃ£¬Ö»Ö´ĞĞÒ»´Î */
+            /* æœªè¿æ¥ï¼Œæ— ç”¨æˆ·è®¾ç½®ï¼Œåªæ‰§è¡Œä¸€æ¬¡ */
             portENTER_CRITICAL(&max_sleep_uptime_spinlock);
             bool b = max_sleep_uptime==DEF_MAX_SLEEP_TIME;
             portEXIT_CRITICAL(&max_sleep_uptime_spinlock);
@@ -323,7 +323,7 @@ static void echo_task(void *arg)
         data[len] = '\0';
         if( strstr(data, CORE_SHUT_DOWN) ) {
             printf("=> core shut down recvd, call esp_deep_sleep_start()\n");
-            /* ½øÈëÉî¶ÈĞİÃß */
+            /* è¿›å…¥æ·±åº¦ä¼‘çœ  */
             uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_OK, strlen(CORE_SHUT_DOWN_OK)+1);
 #if  DBG_NO_SLEEP_MODE
 #else
@@ -332,7 +332,7 @@ static void echo_task(void *arg)
 #endif
         }
         else if( strstr(data, IR_WKUP_PIN_FALLING) ) {
-            /* ÉÏ´ÎÊÇÏÂ½µÑØµÄ»°²»ÓÃ¸üĞÂ */
+            /* ä¸Šæ¬¡æ˜¯ä¸‹é™æ²¿çš„è¯ä¸ç”¨æ›´æ–° */
             if( 0 == fallingTickCount) {
                 fallingTickCount = xTaskGetTickCount();
             }
@@ -383,7 +383,7 @@ static void echo_task(void *arg)
                 printf("STATUS: ir-high\n");
             } else {
                 printf("STATUS: ir-low\n");
-                /* ÉÏ´ÎÊÇÏÂ½µÑØµÄ»°²»ÓÃ¸üĞÂ */
+                /* ä¸Šæ¬¡æ˜¯ä¸‹é™æ²¿çš„è¯ä¸ç”¨æ›´æ–° */
                 if( 0 == fallingTickCount) {
                     fallingTickCount = xTaskGetTickCount();
                 }
@@ -395,7 +395,7 @@ static void echo_task(void *arg)
             } else {
                 printf("STATUS: ir-init-low\n");
 #if  0
-                /* ÉÏ´ÎÊÇÏÂ½µÑØµÄ»°²»ÓÃ¸üĞÂ */
+                /* ä¸Šæ¬¡æ˜¯ä¸‹é™æ²¿çš„è¯ä¸ç”¨æ›´æ–° */
                 if( 0 == fallingTickCount) {
                     fallingTickCount = xTaskGetTickCount();
                 }
@@ -424,7 +424,7 @@ static void echo_task(void *arg)
             }
             xSemaphoreGive(g_data_mutex);
             if(0 == vPercent) {
-                /* ·ÀÖ¹µç³Ø¹ı·Å£¬µÍÑ¹¹Ø»ú */
+                /* é˜²æ­¢ç”µæ± è¿‡æ”¾ï¼Œä½å‹å…³æœº */
                 SET_LOG(low_battery);
                 upgrade_block();
                 printf("=-> low battery, send shutdown request\n");
@@ -471,7 +471,7 @@ void app_main()
 
 #if  0
     /* add by liuwenjian 2020-3-4 begin */
-    /* Éî¶ÈË¯Ãß»½ĞÑ */
+    /* æ·±åº¦ç¡çœ å”¤é†’ */
     switch (esp_sleep_get_wakeup_cause())
     {
         case ESP_SLEEP_WAKEUP_EXT1:
@@ -511,13 +511,13 @@ void app_main()
     }
 
     semaphoreInit();
-    /* Éè±¸ĞÅÏ¢³õÊ¼»¯ */
+    /* è®¾å¤‡ä¿¡æ¯åˆå§‹åŒ– */
     init_para(false);
 
     i2c_app_init();
     rtc_read_time(false);
 
-    /* ¼ì²éÊÇ·ñĞèÒªÊ±¼äÍ¬²½ */
+    /* æ£€æŸ¥æ˜¯å¦éœ€è¦æ—¶é—´åŒæ­¥ */
     if(rtc_sntp_needed()) {
         app_wifi_main();
         sntp_rtc_routine();
@@ -531,10 +531,10 @@ void app_main()
     xTaskCreate(tcp_server_task, "tcp_server", 3072, NULL, 5, NULL);
 
     /* add by liuwenjian 2020-3-4 begin */
-    /* ´´½¨ÈÎÎñ½ÓÊÕÏµÍ³ÏûÏ¢ */
+    /* åˆ›å»ºä»»åŠ¡æ¥æ”¶ç³»ç»Ÿæ¶ˆæ¯ */
     xTaskCreate(echo_task, "uart_echo_task", 1024*2, NULL, 10, NULL);
 
-    /* µÈ´ıÉãÏñÍ¼Æ¬´«ËÍ½áÊø */
+    /* ç­‰å¾…æ‘„åƒå›¾ç‰‡ä¼ é€ç»“æŸ */
     while (true)
     {
         portENTER_CRITICAL(&max_sleep_uptime_spinlock);
@@ -549,7 +549,7 @@ void app_main()
     }
     /* exceed max uptime, timeout */
 
-    /* µÈ´ıÉı¼¶½áÊø */
+    /* ç­‰å¾…å‡çº§ç»“æŸ */
     if(is_connect) {
         xSemaphoreTake(g_update_over, portMAX_DELAY);
     }
@@ -561,7 +561,7 @@ void app_main()
     esp_sleep_enable_timer_wakeup(wakeup_time_sec * 1000000);
     */
 
-    /* ÉèÖÃpin ½Å×÷Îª»½ĞÑÌõ¼ş */
+    /* è®¾ç½®pin è„šä½œä¸ºå”¤é†’æ¡ä»¶ */
     const int ext_wakeup_pin_1 = 33;
     const uint64_t ext_wakeup_pin_1_mask = 1ULL << ext_wakeup_pin_1;
 
@@ -575,7 +575,7 @@ void app_main()
 
     printf("file:%s, line:%d, begin esp_deep_sleep_start\n", 
         __FILE__, __LINE__);
-    /* ½øÈëÉî¶ÈĞİÃß */
+    /* è¿›å…¥æ·±åº¦ä¼‘çœ  */
     uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_OK, strlen(CORE_SHUT_DOWN_OK)+1);
 #if  DBG_NO_SLEEP_MODE
     nop();

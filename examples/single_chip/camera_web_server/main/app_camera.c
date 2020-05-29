@@ -239,7 +239,7 @@ static int send_jpeg(pic_queue *send_pic)
     return CAMERA_OK;
 }
 
-/* Í¼Æ¬³ö¶Óº¯Êı */
+/* å›¾ç‰‡å‡ºé˜Ÿå‡½æ•° */
 void pic_out_queue()
 {
     int ret;
@@ -273,7 +273,7 @@ void pic_out_queue()
     return ;
 }
 
-/* Í¼Æ¬Èë¶Óº¯Êı */
+/* å›¾ç‰‡å…¥é˜Ÿå‡½æ•° */
 void pic_in_queue(int len, unsigned char *buf)
 {
     pic_queue *cur_pic = NULL;
@@ -397,7 +397,7 @@ static esp_err_t stream_send()
 //    char *part_buf[64];
     printf("file:%s, line:%d, begin esp_wait_sntp_sync\r\n", __FILE__, __LINE__);
     /* add by liuwenjian 2020-3-4 begin */
-    /* ÓÃÓÚÊ±¼äÍ¬²½ */
+    /* ç”¨äºæ—¶é—´åŒæ­¥ */
     esp_wait_sntp_sync();
     time(&timeValue);
     localtime_r(&timeValue, &tmValue);
@@ -410,7 +410,7 @@ static esp_err_t stream_send()
 //    int64_t test_frame = 0;
     g_init_data.start_time = time(NULL);
 
-    /* ÓÃÓÚ·¢ËÍĞÄÌø°ü */
+    /* ç”¨äºå‘é€å¿ƒè·³åŒ… */
     send_heartbeat_packet();
     /* add by liuwenjian 2020-3-4 end */
 
@@ -421,7 +421,7 @@ static esp_err_t stream_send()
 
 #endif
     /* modify by liuwenjian 2020-3-4 begin */
-    /* Â¼Ïñ¼ÆÊ± */
+    /* å½•åƒè®¡æ—¶ */
     cur_time = old_time = xTaskGetTickCount();
     printf("file:%s, line:%d, begin while, cur_time = %d\r\n", __FILE__, __LINE__, cur_time);
     ESP_LOGI(TAG, "<---------START CAPTURE--------->");
@@ -454,7 +454,7 @@ static esp_err_t stream_send()
                     _jpg_buf = fb->buf;
 //                    printf("file:%s, line:%d, fb->len = %d, time = %ld\r\n", 
 //                        __FILE__, __LINE__, fb->len, time(NULL));
-                    /* Í¼Æ¬Èë¶ÓÁĞ */
+                    /* å›¾ç‰‡å…¥é˜Ÿåˆ— */
                     if(false == g_camera_over) {
                         pic_in_queue(fb->len, fb->buf);
                     }
@@ -462,7 +462,7 @@ static esp_err_t stream_send()
                     cur_time = xTaskGetTickCount();
                     if ((cur_time - old_time > (CAMERA_VIDEO_TIME*configTICK_RATE_HZ) ) && (false == g_camera_over))
                     {
-                        /* ³¬Ê±½áÊøÂ¼ÖÆ */
+                        /* è¶…æ—¶ç»“æŸå½•åˆ¶ */
                         printf("file:%s, line:%d, camera over, cur_time = %d\r\n", __FILE__, __LINE__, cur_time);
                         g_camera_over = true;
                         SET_LOG(camera_over);
@@ -503,7 +503,7 @@ static esp_err_t stream_send()
     return res;
 }
 
-/* »ñÈ¡ÉãÏñÍ·Í¼ĞÎ²¢·¢ËÍ */
+/* è·å–æ‘„åƒå¤´å›¾å½¢å¹¶å‘é€ */
 static void get_camera_data_task(void *pvParameter)
 {
     stream_send();
@@ -515,7 +515,7 @@ static void get_camera_data_task(void *pvParameter)
     vTaskDelete(NULL);
 }
 
-/* ½ÓÊÕ·şÎñÆ÷Êı¾İ */
+/* æ¥æ”¶æœåŠ¡å™¨æ•°æ® */
 static void recv_data_task(void *pvParameter)
 {
     int ret;
@@ -558,7 +558,7 @@ static void flash_led(void) {
     }
 }
 
-/* ¶ÓÁĞ¶ÁÈ¡Í¼Æ¬²¢·¢ËÍ³öÈ¥ */
+/* é˜Ÿåˆ—è¯»å–å›¾ç‰‡å¹¶å‘é€å‡ºå» */
 static void send_queue_pic_task(void *pvParameter)
 {
     int ret;
@@ -567,7 +567,7 @@ static void send_queue_pic_task(void *pvParameter)
     uint8_t reg[8];
     printf("file:%s, line:%d, begin esp_wait_sntp_sync\r\n", __FILE__, __LINE__);
 
-    /* ÓÃÓÚÊ±¼äÍ¬²½ */
+    /* ç”¨äºæ—¶é—´åŒæ­¥ */
     //printf("skip esp_wait_sntp_sync.....\n");
     while( !is_connect ) {
         vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -575,7 +575,7 @@ static void send_queue_pic_task(void *pvParameter)
     SET_LOG(connect_wifi);
     g_init_data.start_time = time(NULL);
 
-    /* ÓÃÓÚ·¢ËÍĞÄÌø°ü */
+    /* ç”¨äºå‘é€å¿ƒè·³åŒ… */
     send_heartbeat_packet();
 
     while (true)
@@ -746,16 +746,16 @@ void app_camera_main ()
     
     //drop down frame size for higher initial frame rate
 //    printf("file:%s, line:%d, begin set_framesize\r\n", __FILE__, __LINE__);
-    /* ÉèÖÃÏñËØ */
+    /* è®¾ç½®åƒç´  */
     s->set_framesize(s, FRAMESIZE_QVGA + 3);
 
 //    printf("file:%s, line:%d, begin get_camera_data_task, time = %ld\r\n", __FILE__, __LINE__, time(NULL));
     /* add by liuwenjian 2020-3-4 begin */
-    /* ´´½¨ÈÎÎñÉãÏñÍ·¿ªÊ¼Â¼ÖÆ */
+    /* åˆ›å»ºä»»åŠ¡æ‘„åƒå¤´å¼€å§‹å½•åˆ¶ */
     xTaskCreate(&get_camera_data_task, "get_camera_data_task", 4096, NULL, 4, &get_camera_data_task_handle);
 //    printf("file:%s, line:%d, begin recv_data_task\r\n", __FILE__, __LINE__);
 //    xTaskCreate(&recv_data_task, "recv_data_task", 8192, NULL, 5, NULL);
-    /* ´´½¨ÈÎÎñ·¢ËÍÍ¼Æ¬ */
+    /* åˆ›å»ºä»»åŠ¡å‘é€å›¾ç‰‡ */
     xTaskCreate(&send_queue_pic_task, "send_queue_pic_task", 3072, NULL, 5, &send_queue_pic_task_handle);
     /* add by liuwenjian 2020-3-4 end */
 

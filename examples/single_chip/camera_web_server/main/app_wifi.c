@@ -384,7 +384,7 @@ void simple_ota_example_task(void *pvParameter)
         printf("upgrade url: %s\n", upgradeUrl);
         ret = airbat_esp_https_ota(&config);
 
-        /* mcu升级是否成功都结�?*/
+        /* mcu升级是否成功都结束 */
         if(ESP_OK == ret) {
             printf("Upgrade mcu OKAY~~~~~\n");
         } else {
@@ -456,7 +456,7 @@ void app_wifi_main()
 
 //    printf("file:%s, line:%d, begin simple_ota_example_task\r\n", __FILE__, __LINE__);
     /* add by liuwenjian 2020-3-4 begin */
-    /* ota ���� */
+    /* ota任务 */
     xTaskCreate(&simple_ota_example_task, "ota_example_task", 4096, NULL, 5, &simple_ota_example_task_handle);
     /* add by liuwenjian 2020-3-4 end */
 }

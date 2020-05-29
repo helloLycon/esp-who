@@ -149,7 +149,7 @@ extern "C" {
 #define HAVE_DATA               0x01
 #define NOT_HAVE_DATA           0x00
 
-/* Í¼Æ¬´æ´¢¶ÓÁÐ */
+/* å›¾ç‰‡å­˜å‚¨é˜Ÿåˆ— */
 typedef struct pic_queue
 {
     struct pic_queue *next;

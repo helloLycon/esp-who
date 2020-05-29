@@ -1,18 +1,18 @@
 /*
 * @file         tcp_bsp.c 
-* @brief        wifiÁ¬½ÓÊÂ¼ş´¦ÀíºÍsocketÊÕ·¢Êı¾İ´¦Àí
-* @details      ÔÚ¹Ù·½Ô´ÂëµÄ»ù´¡ÊÇÊÊµ±ĞŞ¸Äµ÷Õû£¬²¢Ôö¼Ó×¢ÊÍ
+* @brief        wifiè¿æ¥äº‹ä»¶å¤„ç†å’Œsocketæ”¶å‘æ•°æ®å¤„ç†
+* @details      åœ¨å®˜æ–¹æºç çš„åŸºç¡€æ˜¯é€‚å½“ä¿®æ”¹è°ƒæ•´ï¼Œå¹¶å¢åŠ æ³¨é‡Š
 * @author       hx-zsj 
 * @par Copyright (c):  
-*               ºìĞñÎŞÏß¿ª·¢ÍÅ¶Ó£¬QQÈº£º671139854
+*               çº¢æ—­æ— çº¿å¼€å‘å›¢é˜Ÿï¼ŒQQç¾¤ï¼š671139854
 * @par History:          
 *               Ver0.0.1:
-                     hx-zsj, 2018/08/08, ³õÊ¼»¯°æ±¾\n 
+                     hx-zsj, 2018/08/08, åˆå§‹åŒ–ç‰ˆæœ¬\n 
 */
 
 /* 
 =============
-Í·ÎÄ¼ş°üº¬
+å¤´æ–‡ä»¶åŒ…å«
 =============
 */
 #include <stdio.h>
@@ -34,16 +34,16 @@
 
 /*
 ===========================
-È«¾Ö±äÁ¿¶¨Òå
+å…¨å±€å˜é‡å®šä¹‰
 =========================== 
 */
 //socket
-static int server_socket = -1;                           //·şÎñÆ÷socket
-static struct sockaddr_in server_addr;                  //serverµØÖ·
-static struct sockaddr_in client_addr;                  //clientµØÖ·
-static unsigned int socklen = sizeof(client_addr);      //µØÖ·³¤¶È
-static int connect_socket = -1;                          //Á¬½Ósocket
-bool g_rxtx_need_restart = false;                       //Òì³£ºó£¬ÖØĞÂÁ¬½Ó±ê¼Ç
+static int server_socket = -1;                           //æœåŠ¡å™¨socket
+static struct sockaddr_in server_addr;                  //serveråœ°å€
+static struct sockaddr_in client_addr;                  //clientåœ°å€
+static unsigned int socklen = sizeof(client_addr);      //åœ°å€é•¿åº¦
+static int connect_socket = -1;                          //è¿æ¥socket
+bool g_rxtx_need_restart = false;                       //å¼‚å¸¸åï¼Œé‡æ–°è¿æ¥æ ‡è®°
 static unsigned char *g_send_buf = NULL;
 static unsigned char *g_recv_buf = NULL;
 
@@ -63,7 +63,7 @@ static unsigned char *g_recv_buf = NULL;
 
 /*
 ===========================
-º¯ÊıÉùÃ÷
+å‡½æ•°å£°æ˜
 =========================== 
 */
 
@@ -75,12 +75,12 @@ static void esp_initialize_sntp(void)
 }
 
 /*
-* Ê±¼äÍ¬²½
-* @param   void: ÎŞ
-* @retval      void                :ÎŞ
-* @note        ĞŞ¸ÄÈÕÖ¾ 
+* æ—¶é—´åŒæ­¥
+* @param   void: æ— 
+* @retval      void                :æ— 
+* @note        ä¿®æ”¹æ—¥å¿— 
 *               Ver0.0.1:
-                    yf-lwj, 2020/01/13, ³õÊ¼»¯°æ±¾\n 
+                    yf-lwj, 2020/01/13, åˆå§‹åŒ–ç‰ˆæœ¬\n 
 */
 void esp_wait_sntp_sync(void)
 {
@@ -105,12 +105,12 @@ void esp_wait_sntp_sync(void)
 }
 
 /*
-* ¼ì²âsocket Á¬½Ó×´Ì¬
-* @param[out]   int *                 :»ñÈ¡socket ÊıÖµ
-* @retval      void                :ÎŞ
-* @note        ĞŞ¸ÄÈÕÖ¾ 
+* æ£€æµ‹socket è¿æ¥çŠ¶æ€
+* @param[out]   int *                 :è·å–socket æ•°å€¼
+* @retval      void                :æ— 
+* @note        ä¿®æ”¹æ—¥å¿— 
 *               Ver0.0.1:
-                    yf-lwj, 2020/01/09, ³õÊ¼»¯°æ±¾\n 
+                    yf-lwj, 2020/01/09, åˆå§‹åŒ–ç‰ˆæœ¬\n 
 */
 void get_socket_status(int *socket_fd)
 {
@@ -118,18 +118,18 @@ void get_socket_status(int *socket_fd)
 }
 
 /*
-* ½ÓÊÕÊı¾İÈÎÎñ
-* @param[in]   void                 :ÎŞ
-* @retval      void                :ÎŞ
-* @note        ĞŞ¸ÄÈÕÖ¾ 
+* æ¥æ”¶æ•°æ®ä»»åŠ¡
+* @param[in]   void                 :æ— 
+* @retval      void                :æ— 
+* @note        ä¿®æ”¹æ—¥å¿— 
 *               Ver0.0.1:
-                    hx-zsj, 2018/08/06, ³õÊ¼»¯°æ±¾\n 
+                    hx-zsj, 2018/08/06, åˆå§‹åŒ–ç‰ˆæœ¬\n 
 */
 int recv_data()
 {
     unsigned char sn_len;
     int recv_count = 0;
-    int len = 0;            //³¤¶È
+    int len = 0;            //é•¿åº¦
 //    int loop;
 
     if (NULL == g_recv_buf)
@@ -143,9 +143,9 @@ int recv_data()
         }
     }
     
-    //Çå¿Õ»º´æ
+    //æ¸…ç©ºç¼“å­˜
     memset(g_recv_buf, 0x00, 1024);
-    //¶ÁÈ¡½ÓÊÕÊı¾İ
+    //è¯»å–æ¥æ”¶æ•°æ®
     len = recv(connect_socket, g_recv_buf, 1024, 0);
     g_rxtx_need_restart = false;
     if (len > 0)
@@ -167,20 +167,20 @@ int recv_data()
             return 1;
         }
         //g_total_data += len;
-        //´òÓ¡½ÓÊÕµ½µÄÊı×é
-        //½ÓÊÕÊı¾İ»Ø·¢
+        //æ‰“å°æ¥æ”¶åˆ°çš„æ•°ç»„
+        //æ¥æ”¶æ•°æ®å›å‘
 //        send(connect_socket, databuff, strlen(databuff), 0);
         //sendto(connect_socket, databuff , sizeof(databuff), 0, (struct sockaddr *) &remote_addr,sizeof(remote_addr));
     }
     else
     {
-        //´òÓ¡´íÎóĞÅÏ¢
+        //æ‰“å°é”™è¯¯ä¿¡æ¯
         show_socket_error_reason("recv_data", connect_socket);
-        //·şÎñÆ÷¹ÊÕÏ£¬±ê¼ÇÖØÁ¬
+        //æœåŠ¡å™¨æ•…éšœï¼Œæ ‡è®°é‡è¿
         g_rxtx_need_restart = true;
         
 #if TCP_SERVER_CLIENT_OPTION
-        //·şÎñÆ÷½ÓÊÕÒì³££¬²»ÓÃbreakºóclose socket,ÒòÎªÓĞÆäËûclient
+        //æœåŠ¡å™¨æ¥æ”¶å¼‚å¸¸ï¼Œä¸ç”¨breakåclose socket,å› ä¸ºæœ‰å…¶ä»–client
         //break;
         vTaskDelete(NULL);
 #else
@@ -192,7 +192,7 @@ int recv_data()
 
 /*
     close_socket();
-    //±ê¼ÇÖØÁ¬
+    //æ ‡è®°é‡è¿
     g_rxtx_need_restart = true;
     vTaskDelete(NULL);
 */    
@@ -228,48 +228,48 @@ void package_message(packet_info packet_data, int *package_len, unsigned char *p
 
 //    printf("file:%s, line:%d, in package_message\r\n", __FILE__, __LINE__);
 
-    /* ±¨ÎÄÍ· */
+    /* æŠ¥æ–‡å¤´ */
     packet_head = htons(PACKET_HEAD);
 //    printf("file:%s, line:%d, packet_head = %x\r\n", __FILE__, __LINE__, packet_head);
     memcpy(packet_buf, &packet_head, 2);
     packet_len = 2;
 //    printf("file:%s, line:%d, packet_len = %d\r\n", __FILE__, __LINE__, packet_len);
 
-    /* °æ±¾ºÅ */
+    /* ç‰ˆæœ¬å· */
     packet_buf[packet_len] = PACKET_VERSION;
     packet_len++;
 //    printf("file:%s, line:%d, packet_len = %d\r\n", __FILE__, __LINE__, packet_len);
 
-    /* ×´Ì¬ */
+    /* çŠ¶æ€ */
     packet_buf[packet_len] = packet_data.status;
     packet_len++;
 
-    /* ĞÅºÅÇ¿¶È */
+    /* ä¿¡å·å¼ºåº¦ */
     memset(&packet_buf[packet_len], 0x00, 2);
     packet_len += 2;
 //    printf("file:%s, line:%d, packet_len = %d\r\n", __FILE__, __LINE__, packet_len);
 
-    /* Éè±¸±àºÅ³¤¶È */
+    /* è®¾å¤‡ç¼–å·é•¿åº¦ */
     device_id_len = (unsigned char)strlen(cfg.device_id);
     packet_buf[packet_len] = device_id_len;
     packet_len++;
 //    printf("file:%s, line:%d, packet_len = %d\r\n", __FILE__, __LINE__, packet_len);
 
-    /* Éè±¸±àºÅ */
+    /* è®¾å¤‡ç¼–å· */
     if (device_id_len > 0)
     {
         memcpy(&packet_buf[packet_len], cfg.device_id, device_id_len);
         packet_len += device_id_len;
     }
-    //Ô¤Áô
+    //é¢„ç•™
 //    printf("file:%s, line:%d, packet_len = %d\r\n", __FILE__, __LINE__, packet_len);
 
-    /* ÃüÁî×Ö */
+    /* å‘½ä»¤å­— */
     packet_buf[packet_len] = packet_data.type;
     packet_len++;
 //    printf("file:%s, line:%d, packet_len = %d\r\n", __FILE__, __LINE__, packet_len);
 
-    /* Êı¾İ³¤¶È */
+    /* æ•°æ®é•¿åº¦ */
     net_send_len = htons(packet_data.send_len);
     memcpy(&packet_buf[packet_len], &net_send_len, 2);
     packet_len += 2;
@@ -277,33 +277,33 @@ void package_message(packet_info packet_data, int *package_len, unsigned char *p
 
     if (SEND_FACE_PIC_CODE == packet_data.type)
     {
-        /* Êı¾İ */
+        /* æ•°æ® */
         jpg_data = (send_jpeg_info *)packet_data.data;
-        /* Í¼Æ¬±àºÅ */
+        /* å›¾ç‰‡ç¼–å· */
         net_num = htons(jpg_data->num);
         memcpy(&packet_buf[packet_len], &net_num, 2);
         packet_len += 2;
 //        printf("file:%s, line:%d, jpg_data->num = %d\r\n", __FILE__, __LINE__, jpg_data->num);
 
-        /* ¹éÀà±àºÅ */
+        /* å½’ç±»ç¼–å· */
         net_class_num = htons(g_init_data.start_time);
         memcpy(&packet_buf[packet_len], &net_class_num, 4);
         packet_len += 4;
 //        printf("file:%s, line:%d, g_init_data.start_time = %ld\r\n", __FILE__, __LINE__, g_init_data.start_time);
 
-        /* Í¼Æ¬´´½¨Ê±¼ä */
+        /* å›¾ç‰‡åˆ›å»ºæ—¶é—´ */
         net_create_time = htonl(jpg_data->create_time);
         memcpy(&packet_buf[packet_len], &net_create_time, 4);
         packet_len += 4;
 //        printf("file:%s, line:%d, jpg_data->create_time = %ld\r\n", __FILE__, __LINE__, jpg_data->create_time);
 
-        /* Æ«ÒÆÁ¿ */
+        /* åç§»é‡ */
         net_send_count = htonl(jpg_data->send_count);
         memcpy(&packet_buf[packet_len], &net_send_count, 4);
         packet_len += 4;
 //        printf("file:%s, line:%d, jpg_data->send_count = %lu\r\n", __FILE__, __LINE__, jpg_data->send_count);
 
-        /* Êı¾İ°üÄÚÈİ */
+        /* æ•°æ®åŒ…å†…å®¹ */
         if (packet_data.send_len > 14)
         {
             memcpy(&packet_buf[packet_len], jpg_data->buf, (packet_data.send_len - 14));
@@ -314,19 +314,19 @@ void package_message(packet_info packet_data, int *package_len, unsigned char *p
     {
         heartbeat_data = (send_heartbeat_info *)packet_data.data;
         
-        /* »ñÈ¡µç³ØµçÁ¿ */
+        /* è·å–ç”µæ± ç”µé‡ */
         net_battery = htons(heartbeat_data->battery);
         memcpy(&packet_buf[packet_len], &net_battery, 2);
         packet_len += 2;
 
-        /* »ñÈ¡Ê±¼ä */
+        /* è·å–æ—¶é—´ */
         net_heartbeat_time = htonl(heartbeat_data->cur_time);
         memcpy(&packet_buf[packet_len], &net_heartbeat_time, 4);
         packet_len += 4;
     }
 //    printf("file:%s, line:%d, packet_len = %d\r\n", __FILE__, __LINE__, packet_len);
 
-    /* Ğ£ÑéºÍ */
+    /* æ ¡éªŒå’Œ */
     check_sum = 0;
     for (loop = 0; loop < packet_len; loop++)
     {
@@ -338,7 +338,7 @@ void package_message(packet_info packet_data, int *package_len, unsigned char *p
     packet_len++;
 //    printf("file:%s, line:%d, packet_len = %d\r\n", __FILE__, __LINE__, packet_len);
 
-    /* Êı¾İÎ² */
+    /* æ•°æ®å°¾ */
     packet_buf[packet_len] = PACKET_END;
     packet_len++;
 //    printf("file:%s, line:%d, packet_len = %d\r\n", __FILE__, __LINE__, packet_len);
@@ -349,17 +349,17 @@ void package_message(packet_info packet_data, int *package_len, unsigned char *p
 }
 
 /*
-* ·¢ËÍÊı¾İÈÎÎñ
-* @param[in]   void                 :ÎŞ
-* @retval      void                :ÎŞ
-* @note        ĞŞ¸ÄÈÕÖ¾ 
+* å‘é€æ•°æ®ä»»åŠ¡
+* @param[in]   void                 :æ— 
+* @retval      void                :æ— 
+* @note        ä¿®æ”¹æ—¥å¿— 
 *               Ver0.0.1:
-                    hx-zsj, 2020/01/07, ³õÊ¼»¯°æ±¾\n 
+                    hx-zsj, 2020/01/07, åˆå§‹åŒ–ç‰ˆæœ¬\n 
 */
 int send_data(packet_info packet_data, bool recv_needed)
 {
     int ret;
-    int len = 0;            //³¤¶È
+    int len = 0;            //é•¿åº¦
     int send_len = 0;
     static unsigned char is_first = TRUE;
 
@@ -374,12 +374,12 @@ int send_data(packet_info packet_data, bool recv_needed)
         }
     }
     
-    //Çå¿Õ»º´æ
+    //æ¸…ç©ºç¼“å­˜
     memset(g_send_buf, 0x00, APP_PACKET_DATA_LEN + 128);
 
 //    printf("file:%s, line:%d, begin package_message\r\n", __FILE__, __LINE__);
     package_message(packet_data, &len, g_send_buf);
-    //¶ÁÈ¡½ÓÊÕÊı¾İ
+    //è¯»å–æ¥æ”¶æ•°æ®
 //    printf("file:%s, line:%d, connect_socket = %d, len = %d\r\n", 
 //        __FILE__, __LINE__, connect_socket, len);
 
@@ -395,21 +395,21 @@ int send_data(packet_info packet_data, bool recv_needed)
     if (send_len > 0)
     {
         //g_total_data += len;
-        //´òÓ¡½ÓÊÕµ½µÄÊı×é
-        //½ÓÊÕÊı¾İ»Ø·¢
+        //æ‰“å°æ¥æ”¶åˆ°çš„æ•°ç»„
+        //æ¥æ”¶æ•°æ®å›å‘
         //sendto(connect_socket, databuff , sizeof(databuff), 0, (struct sockaddr *) &remote_addr,sizeof(remote_addr));
 //        printf("file:%s, line:%d, send len = %d\r\n", __FILE__, __LINE__, send_len);
     }
     else
     {
-        //´òÓ¡´íÎóĞÅÏ¢
+        //æ‰“å°é”™è¯¯ä¿¡æ¯
         show_socket_error_reason("recv_data", connect_socket);
-        //·şÎñÆ÷¹ÊÕÏ£¬±ê¼ÇÖØÁ¬
+        //æœåŠ¡å™¨æ•…éšœï¼Œæ ‡è®°é‡è¿
         g_rxtx_need_restart = true;
         
         printf("file:%s, line:%d, send failed errno = %d, errno = %s\r\n", 
             __FILE__, __LINE__, errno, strerror(errno));
-        //·şÎñÆ÷½ÓÊÕÒì³££¬²»ÓÃbreakºóclose socket,ÒòÎªÓĞÆäËûclient
+        //æœåŠ¡å™¨æ¥æ”¶å¼‚å¸¸ï¼Œä¸ç”¨breakåclose socket,å› ä¸ºæœ‰å…¶ä»–client
         return CAMERA_ERROR_SEND_FAILED;
     }
 
@@ -437,54 +437,54 @@ skip_recv:
 
 
 /*
-* ½¨Á¢tcp server
-* @param[in]   isCreatServer          :Ê×´Îtrue£¬ÏÂ´Îfalse
-* @retval      void                 :ÎŞ
-* @note        ĞŞ¸ÄÈÕÖ¾ 
+* å»ºç«‹tcp server
+* @param[in]   isCreatServer          :é¦–æ¬¡trueï¼Œä¸‹æ¬¡false
+* @retval      void                 :æ— 
+* @note        ä¿®æ”¹æ—¥å¿— 
 *               Ver0.0.1:
-                    hx-zsj, 2018/08/06, ³õÊ¼»¯°æ±¾\n 
+                    hx-zsj, 2018/08/06, åˆå§‹åŒ–ç‰ˆæœ¬\n 
 */
 esp_err_t create_tcp_server(bool isCreatServer)
 {
-    //Ê×´Î½¨Á¢server
+    //é¦–æ¬¡å»ºç«‹server
     if (isCreatServer)
     {
-        //ĞÂ½¨socket
+        //æ–°å»ºsocket
         server_socket = socket(AF_INET, SOCK_STREAM, 0);
         if (server_socket < 0)
         {
             show_socket_error_reason("create_server", server_socket);
-            //ĞÂ½¨Ê§°Üºó£¬¹Ø±ÕĞÂ½¨µÄsocket£¬µÈ´ıÏÂ´ÎĞÂ½¨
+            //æ–°å»ºå¤±è´¥åï¼Œå…³é—­æ–°å»ºçš„socketï¼Œç­‰å¾…ä¸‹æ¬¡æ–°å»º
             close(server_socket);
             return ESP_FAIL;
         }
-        //ÅäÖÃĞÂ½¨server socket²ÎÊı
+        //é…ç½®æ–°å»ºserver socketå‚æ•°
         server_addr.sin_family = AF_INET;
         server_addr.sin_port = htons(g_init_data.config_data.service_port);
         server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-        //bind:µØÖ·µÄ°ó¶¨
+        //bind:åœ°å€çš„ç»‘å®š
         if (bind(server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
         {
             show_socket_error_reason("bind_server", server_socket);
-            //bindÊ§°Üºó£¬¹Ø±ÕĞÂ½¨µÄsocket£¬µÈ´ıÏÂ´ÎĞÂ½¨
+            //bindå¤±è´¥åï¼Œå…³é—­æ–°å»ºçš„socketï¼Œç­‰å¾…ä¸‹æ¬¡æ–°å»º
             close(server_socket);
             return ESP_FAIL;
         }
     }
-    //listen£¬ÏÂ´ÎÊ±£¬Ö±½Ó¼àÌı
+    //listenï¼Œä¸‹æ¬¡æ—¶ï¼Œç›´æ¥ç›‘å¬
     if (listen(server_socket, 5) < 0)
     {
         show_socket_error_reason("listen_server", server_socket);
-        //listenÊ§°Üºó£¬¹Ø±ÕĞÂ½¨µÄsocket£¬µÈ´ıÏÂ´ÎĞÂ½¨
+        //listenå¤±è´¥åï¼Œå…³é—­æ–°å»ºçš„socketï¼Œç­‰å¾…ä¸‹æ¬¡æ–°å»º
         close(server_socket);
         return ESP_FAIL;
     }
-    //accept£¬ËÑÑ°È«Á¬½Ó¶ÓÁĞ
+    //acceptï¼Œæœå¯»å…¨è¿æ¥é˜Ÿåˆ—
     connect_socket = accept(server_socket, (struct sockaddr *)&client_addr, &socklen);
     if (connect_socket < 0)
     {
         show_socket_error_reason("accept_server", connect_socket);
-        //acceptÊ§°Üºó£¬¹Ø±ÕĞÂ½¨µÄsocket£¬µÈ´ıÏÂ´ÎĞÂ½¨
+        //acceptå¤±è´¥åï¼Œå…³é—­æ–°å»ºçš„socketï¼Œç­‰å¾…ä¸‹æ¬¡æ–°å»º
         close(server_socket);
         return ESP_FAIL;
     }
@@ -493,32 +493,32 @@ esp_err_t create_tcp_server(bool isCreatServer)
 
 
 /*
-* ½¨Á¢tcp client
-* @param[in]   void                 :ÎŞ
-* @retval      void                :ÎŞ
-* @note        ĞŞ¸ÄÈÕÖ¾ 
+* å»ºç«‹tcp client
+* @param[in]   void                 :æ— 
+* @retval      void                :æ— 
+* @note        ä¿®æ”¹æ—¥å¿— 
 *               Ver0.0.1:
-                    hx-zsj, 2018/08/06, ³õÊ¼»¯°æ±¾\n 
+                    hx-zsj, 2018/08/06, åˆå§‹åŒ–ç‰ˆæœ¬\n 
 *               Ver0.0.12:
-                    hx-zsj, 2018/08/09, Ôö¼Óclose socket\n 
+                    hx-zsj, 2018/08/09, å¢åŠ close socket\n 
 */
 esp_err_t create_tcp_client()
 {
     xSemaphoreTake(g_data_mutex, portMAX_DELAY);
     config_para cfg = g_init_data.config_data;
     xSemaphoreGive(g_data_mutex);
-    //ĞÂ½¨socket
+    //æ–°å»ºsocket
     connect_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (connect_socket < 0)
     {
-        //´òÓ¡±¨´íĞÅÏ¢
+        //æ‰“å°æŠ¥é”™ä¿¡æ¯
         show_socket_error_reason("create client", connect_socket);
         printf("file:%s, line:%d, socket errno = %d, errno = %s\r\n", 
             __FILE__, __LINE__, errno, strerror(errno));
-        //ĞÂ½¨Ê§°Üºó£¬¹Ø±ÕĞÂ½¨µÄsocket£¬µÈ´ıÏÂ´ÎĞÂ½¨
+        //æ–°å»ºå¤±è´¥åï¼Œå…³é—­æ–°å»ºçš„socketï¼Œç­‰å¾…ä¸‹æ¬¡æ–°å»º
         return ESP_FAIL;
     }
-    //ÅäÖÃÁ¬½Ó·şÎñÆ÷ĞÅÏ¢
+    //é…ç½®è¿æ¥æœåŠ¡å™¨ä¿¡æ¯
     server_addr.sin_family = AF_INET;    
     server_addr.sin_port = htons(cfg.service_port);
     server_addr.sin_addr.s_addr = inet_addr(cfg.service_ip_str);
@@ -526,12 +526,12 @@ esp_err_t create_tcp_client()
     printf("file:%s, line:%d, ip = %s, port = %d\r\n", 
         __FILE__, __LINE__, cfg.service_ip_str, cfg.service_port);
         
-    //Á¬½Ó·şÎñÆ÷
+    //è¿æ¥æœåŠ¡å™¨
     if (connect(connect_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
     {
-        //´òÓ¡±¨´íĞÅÏ¢
+        //æ‰“å°æŠ¥é”™ä¿¡æ¯
         show_socket_error_reason("client connect", connect_socket);
-        //Á¬½ÓÊ§°Üºó£¬¹Ø±ÕÖ®Ç°ĞÂ½¨µÄsocket£¬µÈ´ıÏÂ´ÎĞÂ½¨
+        //è¿æ¥å¤±è´¥åï¼Œå…³é—­ä¹‹å‰æ–°å»ºçš„socketï¼Œç­‰å¾…ä¸‹æ¬¡æ–°å»º
         close(connect_socket);
         connect_socket = -1;
         printf("file:%s, line:%d, socket errno = %d, errno = %s\r\n", 
@@ -542,12 +542,12 @@ esp_err_t create_tcp_client()
 }
 
 /*
-* »ñÈ¡socket´íÎó´úÂë
-* @param[in]   socket                 :socket±àºÅ
-* @retval      void                :ÎŞ
-* @note        ĞŞ¸ÄÈÕÖ¾ 
+* è·å–socketé”™è¯¯ä»£ç 
+* @param[in]   socket                 :socketç¼–å·
+* @retval      void                :æ— 
+* @note        ä¿®æ”¹æ—¥å¿— 
 *               Ver0.0.1:
-                    hx-zsj, 2018/08/06, ³õÊ¼»¯°æ±¾\n 
+                    hx-zsj, 2018/08/06, åˆå§‹åŒ–ç‰ˆæœ¬\n 
 */
 int get_socket_error_code(int socket)
 {
@@ -563,12 +563,12 @@ int get_socket_error_code(int socket)
 }
 
 /*
-* »ñÈ¡socket´íÎóÔ­Òò
-* @param[in]   socket                 :socket±àºÅ
-* @retval      void                :ÎŞ
-* @note        ĞŞ¸ÄÈÕÖ¾ 
+* è·å–socketé”™è¯¯åŸå› 
+* @param[in]   socket                 :socketç¼–å·
+* @retval      void                :æ— 
+* @note        ä¿®æ”¹æ—¥å¿— 
 *               Ver0.0.1:
-                    hx-zsj, 2018/08/06, ³õÊ¼»¯°æ±¾\n 
+                    hx-zsj, 2018/08/06, åˆå§‹åŒ–ç‰ˆæœ¬\n 
 */
 int show_socket_error_reason(const char *str, int socket)
 {
@@ -582,12 +582,12 @@ int show_socket_error_reason(const char *str, int socket)
 }
 
 /*
-* ¼ì²ésocket
-* @param[in]   socket                 :socket±àºÅ
-* @retval      void                :ÎŞ
-* @note        ĞŞ¸ÄÈÕÖ¾ 
+* æ£€æŸ¥socket
+* @param[in]   socket                 :socketç¼–å·
+* @retval      void                :æ— 
+* @note        ä¿®æ”¹æ—¥å¿— 
 *               Ver0.0.1:
-                    hx-zsj, 2018/08/06, ³õÊ¼»¯°æ±¾\n 
+                    hx-zsj, 2018/08/06, åˆå§‹åŒ–ç‰ˆæœ¬\n 
 */
 int check_working_socket()
 {
@@ -617,12 +617,12 @@ int check_working_socket()
 }
 
 /*
-* ¹Ø±Õsocket
-* @param[in]   socket                 :socket±àºÅ
-* @retval      void                :ÎŞ
-* @note        ĞŞ¸ÄÈÕÖ¾ 
+* å…³é—­socket
+* @param[in]   socket                 :socketç¼–å·
+* @retval      void                :æ— 
+* @note        ä¿®æ”¹æ—¥å¿— 
 *               Ver0.0.1:
-                    hx-zsj, 2018/08/06, ³õÊ¼»¯°æ±¾\n 
+                    hx-zsj, 2018/08/06, åˆå§‹åŒ–ç‰ˆæœ¬\n 
 */
 void close_socket()
 {
