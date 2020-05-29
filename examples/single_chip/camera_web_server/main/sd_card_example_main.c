@@ -21,9 +21,17 @@
 #include "esp_camera.h"
 #include "app_camera.h"
 #include "esp_sleep.h"
+#include "sd_card_example_main.h"
+#include "common.h"
 
-static const char *TAG = "example";
+static const char *TAG = "sdcard";
+static const char *filename = "/sdcard/log";
 
+static char *logbuf;
+static const int logbuf_size = 1024;
+static int logbuf_offset = 0;
+
+static xSemaphoreHandle sd_log_mutex;
 // This example can use SDMMC and SPI peripherals to communicate with SD card.
 // By default, SDMMC peripheral is used.
 // To enable SPI mode, uncomment the following line:
@@ -34,21 +42,23 @@ static const char *TAG = "example";
 // initialized in SPI mode, it can not be reinitialized in SD mode without
 // toggling power to the card.
 
-#ifdef USE_SPI_MODE
-// Pin mapping when using SPI mode.
-// With this mapping, SD card can be used both in SPI and 1-line SD mode.
-// Note that a pull-up on CS line is required in SD mode.
-#define PIN_NUM_MISO 2
-#define PIN_NUM_MOSI 15
-#define PIN_NUM_CLK  14
-#define PIN_NUM_CS   13
-#endif //USE_SPI_MODE
-
-void sdcard_init_main(void)
+esp_err_t sdcard_init(void)
 {
+    /*------------------camera down-------------------*/
+    esp_camera_deinit();
+    upgrade_block();
+    cam_power_down();
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+    gpio_reset_pin(2);
+    gpio_reset_pin(4);
+    gpio_reset_pin(12);
+    gpio_reset_pin(13);
+    gpio_reset_pin(14);
+    gpio_reset_pin(15);
+
+    /*------------------start init sdcard-------------------*/
     ESP_LOGI(TAG, "Initializing SD card");
 
-#ifndef USE_SPI_MODE
     ESP_LOGI(TAG, "Using SDMMC peripheral");
     sdmmc_host_t host = SDMMC_HOST_DEFAULT();
 
@@ -68,25 +78,12 @@ void sdcard_init_main(void)
     gpio_set_pull_mode(12, GPIO_PULLUP_ONLY);   // D2, needed in 4-line mode only
     gpio_set_pull_mode(13, GPIO_PULLUP_ONLY);   // D3, needed in 4- and 1-line modes
 
-#else
-    ESP_LOGI(TAG, "Using SPI peripheral");
-
-    sdmmc_host_t host = SDSPI_HOST_DEFAULT();
-    sdspi_slot_config_t slot_config = SDSPI_SLOT_CONFIG_DEFAULT();
-    slot_config.gpio_miso = PIN_NUM_MISO;
-    slot_config.gpio_mosi = PIN_NUM_MOSI;
-    slot_config.gpio_sck  = PIN_NUM_CLK;
-    slot_config.gpio_cs   = PIN_NUM_CS;
-    // This initializes the slot without card detect (CD) and write protect (WP) signals.
-    // Modify slot_config.gpio_cd and slot_config.gpio_wp if your board has these signals.
-#endif //USE_SPI_MODE
-
     // Options for mounting the filesystem.
     // If format_if_mount_failed is set to true, SD card will be partitioned and
     // formatted in case when mounting fails.
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
         .format_if_mount_failed = true,
-        .max_files = 5,
+        .max_files = 10,
         .allocation_unit_size = 16 * 1024
     };
 
@@ -105,12 +102,14 @@ void sdcard_init_main(void)
             ESP_LOGE(TAG, "Failed to initialize the card (%s). "
                 "Make sure SD card lines have pull-up resistors in place.", esp_err_to_name(ret));
         }
-        return;
+        return ret;
     }
 
     // Card has been initialized, print its properties
     sdmmc_card_print_info(stdout, card);
+    return ESP_OK;
 
+#if 0
     // Use POSIX and C standard library functions to work with files.
     // First create a file.
     ESP_LOGI(TAG, "Opening file");
@@ -153,13 +152,20 @@ void sdcard_init_main(void)
         *pos = '\0';
     }
     ESP_LOGI(TAG, "Read from file: '%s'", line);
+#endif
 
+    // All done, unmount partition and disable SDMMC or SPI peripheral
+    //esp_vfs_fat_sdmmc_unmount();
+    //ESP_LOGI(TAG, "Card unmounted");
+}
+
+void sdcard_deinit(void) {
     // All done, unmount partition and disable SDMMC or SPI peripheral
     esp_vfs_fat_sdmmc_unmount();
     ESP_LOGI(TAG, "Card unmounted");
 }
 
-int sdcard_test(void) {
+int __sdcard_test(void) {
     esp_camera_deinit();
     cam_power_down();
     vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -173,6 +179,111 @@ int sdcard_test(void) {
     sdcard_init_main();
     
     vTaskDelay(1000000 / portTICK_PERIOD_MS);
+    return 0;
+}
+
+char *sdcard_log_init(void) {
+    logbuf = (char *)malloc(logbuf_size);
+    if(NULL == logbuf) {
+        ESP_LOGE(TAG, "alloc logbuf failed");
+        return NULL;
+    }
+    sd_log_mutex = xSemaphoreCreateMutex();
+    if(NULL == sd_log_mutex) {
+        ESP_LOGE(TAG, "sd_log_mutex");
+        free(logbuf);
+        logbuf = NULL;
+        return NULL;
+    }
+
+#if 0
+    struct tm tmv;
+    time_t t = time(NULL) - xTaskGetTickCount()/configTICK_RATE_HZ;
+    localtime_r(&t, &tmv);
+    logbuf_offset += sprintf(logbuf, "[%d-%d-%d %d:%02d:%02d]\n", tmv.tm_year+1900, tmv.tm_mon+1, tmv.tm_mday, tmv.tm_hour,tmv.tm_min,tmv.tm_sec);
+#endif
+    return logbuf;
+}
+
+
+esp_err_t sdcard_log_write(void) {
+    xSemaphoreTake(sd_log_mutex, portMAX_DELAY);
+    if(NULL == logbuf) {
+        xSemaphoreGive(sd_log_mutex);
+        return ESP_FAIL;
+    }
+
+    esp_err_t ret = sdcard_init();
+    if(ret != ESP_OK) {
+        goto fail2;
+    }
+
+    FILE* f = fopen(filename, "a");
+    if (f == NULL) {
+        ret = ESP_FAIL;
+        ESP_LOGE(TAG, "Failed to open file for writing");
+        goto fail1;
+    }
+
+    struct tm tmv;
+    time_t t = time(NULL) - xTaskGetTickCount()/configTICK_RATE_HZ;
+    localtime_r(&t, &tmv);
+    char tmp[64];
+    sprintf(tmp, "[%d-%d-%d %d:%02d:%02d]\n", tmv.tm_year+1900, tmv.tm_mon+1, tmv.tm_mday, tmv.tm_hour,tmv.tm_min,tmv.tm_sec);
+    size_t sz = fwrite(tmp, 1, strlen(tmp), f);
+    if(sz != strlen(tmp)) {
+        ret = ESP_FAIL;
+        ESP_LOGE(TAG, "Failed to write date(%d)", sz);
+        goto fail1;
+    }
+
+    sz = fwrite(logbuf, 1, strlen(logbuf), f);
+    if(sz != strlen(logbuf)) {
+        ret = ESP_FAIL;
+        ESP_LOGE(TAG, "Failed to write (%d)", sz);
+        goto fail1;
+    }
+
+    ESP_LOGI(TAG, "%s: OKAY", __func__);
+fail1:
+    fclose(f);
+fail2:
+    sdcard_deinit();
+    free(logbuf);
+    logbuf = NULL;
+    xSemaphoreGive(sd_log_mutex);
+    return ret;
+}
+
+const char *log_make_uptime(char *s) {
+    char tmp[32];
+    uint32_t uptime = xTaskGetTickCount();
+    sprintf(tmp, "%6d", uptime);
+    tmp[6] = tmp[5];
+    tmp[5] = tmp[4];
+    tmp[4] = '.';
+    tmp[7] = '\0';
+    strcpy(s, tmp);
+    return s;
+}
+
+int log_enum(enum log_type type) {
+    xSemaphoreTake(sd_log_mutex, portMAX_DELAY);
+    if(NULL == logbuf) {
+        xSemaphoreGive(sd_log_mutex);
+        return 0;
+    }
+    static const char * const str_list[] = {
+        [LOG_CONNECT_WIFI] = "connect wifi",
+        [LOG_CONNECT_SERVER] = "connect server",
+        [LOG_CAMERA_OVER] = "camera capture over",
+        [LOG_SEND_OVER] = "send data over",
+        [LOG_SEND_FAIL] = "send data failed",
+        [LOG_LOW_BATTERY] = "low battery",
+    };
+    char tmp[32];
+    logbuf_offset += sprintf(logbuf+logbuf_offset, "[%s] %s\n", log_make_uptime(tmp), str_list[type]);
+    xSemaphoreGive(sd_log_mutex);
     return 0;
 }
 

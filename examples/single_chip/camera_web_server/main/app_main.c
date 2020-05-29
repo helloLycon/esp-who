@@ -293,7 +293,7 @@ static void echo_task(void *arg)
         if( g_camera_over!=true && fallingTickCount && ( (xTaskGetTickCount() - fallingTickCount) > (3*configTICK_RATE_HZ))) {
             printf("%d => falling edge time out\n", xTaskGetTickCount());
             g_camera_over = true;
-            SET_LOG(camera_over);
+            log_enum(LOG_CAMERA_OVER);
         }
         /* 检查wifi连接 */
         if( xTaskGetTickCount() >= (10*configTICK_RATE_HZ)) {
@@ -306,8 +306,8 @@ static void echo_task(void *arg)
             bool b1 = false == is_connect_server;
             portEXIT_CRITICAL(&is_connect_server_spinlock);
             if(b1 && b && oneTime == false) {
+                sdcard_log_write();
                 ESP_LOGE(TAG, "=-> NO WIFI/SERVER CONNECTED, send shutdown request\n");
-                run_log_write();
                 uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
                 oneTime = true;
                 continue;
@@ -322,14 +322,12 @@ static void echo_task(void *arg)
         //printf("len = %d\n", len);
         data[len] = '\0';
         if( strstr(data, CORE_SHUT_DOWN) ) {
-            printf("=> core shut down recvd, call esp_deep_sleep_start()\n");
-            /* 进入深度休眠 */
-            uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_OK, strlen(CORE_SHUT_DOWN_OK)+1);
-#if  DBG_NO_SLEEP_MODE
-#else
             upgrade_block();
+            sdcard_log_write();
+            printf("=> core shut down recvd, call esp_deep_sleep_start()\n");
+            uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_OK, strlen(CORE_SHUT_DOWN_OK)+1);
+            /* 进入深度休眠 */
             esp_deep_sleep_start();
-#endif
         }
         else if( strstr(data, IR_WKUP_PIN_FALLING) ) {
             /* 上次是下降沿的话不用更新 */
@@ -425,10 +423,10 @@ static void echo_task(void *arg)
             xSemaphoreGive(g_data_mutex);
             if(0 == vPercent) {
                 /* 防止电池过放，低压关机 */
-                SET_LOG(low_battery);
+                log_enum(LOG_LOW_BATTERY);
                 upgrade_block();
+                sdcard_log_write();
                 printf("=-> low battery, send shutdown request\n");
-                run_log_write();
                 uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
                 continue;
             }
@@ -514,6 +512,9 @@ void app_main()
     /* 设备信息初始化 */
     init_para(false);
 
+    /* 日志记录模块初始化 */
+    sdcard_log_init();
+
     i2c_app_init();
     rtc_read_time(false);
 
@@ -528,7 +529,7 @@ void app_main()
     }
 
     //app_httpd_main();
-    xTaskCreate(tcp_server_task, "tcp_server", 3072, NULL, 5, NULL);
+    //xTaskCreate(tcp_server_task, "tcp_server", 3072, NULL, 5, NULL);
 
     /* add by liuwenjian 2020-3-4 begin */
     /* 创建任务接收系统消息 */
@@ -554,7 +555,7 @@ void app_main()
         xSemaphoreTake(g_update_over, portMAX_DELAY);
     }
 
-    run_log_write();
+    sdcard_log_write();
     /*
     const int wakeup_time_sec = 200;
     printf("Enabling timer wakeup, %ds\n", wakeup_time_sec);

@@ -156,7 +156,8 @@ void spiffs_deinit(void) {
     ESP_LOGI(TAG, "SPIFFS unmounted");
 }
 
-int run_log_write(void) {
+/* useless */
+int __run_log_write(void) {
     extern unsigned char g_pic_send_over;
 
     /* record boot time */
@@ -168,7 +169,7 @@ int run_log_write(void) {
     /* send failed */
     portENTER_CRITICAL(&g_pic_send_over_spinlock);
     if(!g_pic_send_over) {
-        SET_LOG(send_fail);
+        //SET_LOG(send_fail);
     }
     portEXIT_CRITICAL(&g_pic_send_over_spinlock);
 

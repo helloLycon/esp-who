@@ -351,7 +351,7 @@ void send_heartbeat_packet()
         portENTER_CRITICAL(&is_connect_server_spinlock);
         is_connect_server = true;
         portEXIT_CRITICAL(&is_connect_server_spinlock);
-        SET_LOG(connect_server);
+        log_enum(LOG_CONNECT_SERVER);
         printf("file:%s, line:%d, begin send_data\r\n", __FILE__, __LINE__);
         ret = send_data(packet_send_data, false);
         if (CAMERA_OK != ret)
@@ -465,7 +465,7 @@ static esp_err_t stream_send()
                         /* 超时结束录制 */
                         printf("file:%s, line:%d, camera over, cur_time = %d\r\n", __FILE__, __LINE__, cur_time);
                         g_camera_over = true;
-                        SET_LOG(camera_over);
+                        log_enum(LOG_CAMERA_OVER);
                         break;
                     }
 /*                    ptr = (uint8_t *)malloc(fb->len);
@@ -572,7 +572,7 @@ static void send_queue_pic_task(void *pvParameter)
     while( !is_connect ) {
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
-    SET_LOG(connect_wifi);
+    log_enum(LOG_CONNECT_WIFI);
     g_init_data.start_time = time(NULL);
 
     /* 用于发送心跳包 */
@@ -594,7 +594,7 @@ static void send_queue_pic_task(void *pvParameter)
             printf("======send over========\r\n");
             //sdcard_test();
             //flash_led();
-            SET_LOG(send_over);
+            log_enum(LOG_SEND_OVER);
 
             portENTER_CRITICAL(&g_pic_send_over_spinlock);
             g_pic_send_over = TRUE;
@@ -604,8 +604,8 @@ static void send_queue_pic_task(void *pvParameter)
             portEXIT_CRITICAL(&max_sleep_uptime_spinlock);
             if( b ) {
                 upgrade_block();
+                sdcard_log_write();
                 printf("=-> send shutdown request\n");
-                run_log_write();
                 uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
             }
             break;

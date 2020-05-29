@@ -14,8 +14,8 @@ typedef struct runLog {
 } __attribute__((packed)) RunLog;
 //typedef struct runLog RunLog;
 
-
-#define SET_LOG(x) do {\
+/* useless */
+#define __SET_LOG(x) do {\
     run_log.x = xTaskGetTickCount();\
 } while(0)
 

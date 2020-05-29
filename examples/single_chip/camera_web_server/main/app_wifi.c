@@ -391,7 +391,7 @@ void simple_ota_example_task(void *pvParameter)
             ESP_LOGE(TAG, "No Upgrade Executed or Upgrade Failed\n");
         }
 #endif
-        for(int i=0; i<10; i++) {
+        for(int i=0; i<20; i++) {
             xSemaphoreGive(g_update_over);
         }
         //const Queue_t *q = (const Queue_t *)g_update_over;
