@@ -375,7 +375,8 @@ void simple_ota_example_task(void *pvParameter)
 //    printf("file:%s, line:%d, begin esp_https_ota, ret = %d\r\n", __FILE__, __LINE__, ret);
     if (ret == ESP_OK)
     {
-        esp_restart();
+        ESP_LOGI(TAG, "airbat_esp_https_ota succeed, thread quit");
+        //esp_restart();
     }
     else 
     {
@@ -391,11 +392,10 @@ void simple_ota_example_task(void *pvParameter)
             ESP_LOGE(TAG, "No Upgrade Executed or Upgrade Failed\n");
         }
 #endif
-        for(int i=0; i<20; i++) {
-            xSemaphoreGive(g_update_over);
-        }
-        //const Queue_t *q = (const Queue_t *)g_update_over;
-        //printf("sem counter = %d\n", q->uxItemSize);
+        ESP_LOGE(TAG, "airbat_esp_https_ota failed, thread quit");
+    }
+    for(int i=0; i<20; i++) {
+        xSemaphoreGive(g_update_over);
     }
     vTaskDelete(NULL);
 }

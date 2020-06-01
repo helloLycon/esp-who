@@ -365,6 +365,10 @@ void send_heartbeat_packet()
 /* add by liuwenjian 2020-3-4 end */
 
 int cam_power_down(void) {
+    if(g_camera_power == false) {
+        /* already closed */
+        return 0;
+    }
     for(int i=0; i<3; i++) {
         printf("send cam_power_down request...\n");
         uart_write_bytes(ECHO_UART_NUM, CAMERA_POWER_DOWN_REQ, strlen(CAMERA_POWER_DOWN_REQ));
@@ -509,7 +513,6 @@ static void get_camera_data_task(void *pvParameter)
     stream_send();
 
     /* finish capture */
-    upgrade_block();
     cam_power_down();
     ESP_LOGI(TAG, "delete thread get_camera_data_task!");
     vTaskDelete(NULL);
@@ -603,7 +606,6 @@ static void send_queue_pic_task(void *pvParameter)
             bool b = max_sleep_uptime == DEF_MAX_SLEEP_TIME;
             portEXIT_CRITICAL(&max_sleep_uptime_spinlock);
             if( b ) {
-                upgrade_block();
                 sdcard_log_write();
                 printf("=-> send shutdown request\n");
                 uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);

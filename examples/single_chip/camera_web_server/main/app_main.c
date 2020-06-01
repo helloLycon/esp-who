@@ -322,7 +322,6 @@ static void echo_task(void *arg)
         //printf("len = %d\n", len);
         data[len] = '\0';
         if( strstr(data, CORE_SHUT_DOWN) ) {
-            upgrade_block();
             sdcard_log_write();
             printf("=> core shut down recvd, call esp_deep_sleep_start()\n");
             uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_OK, strlen(CORE_SHUT_DOWN_OK)+1);
@@ -424,7 +423,6 @@ static void echo_task(void *arg)
             if(0 == vPercent) {
                 /* 防止电池过放，低压关机 */
                 log_enum(LOG_LOW_BATTERY);
-                upgrade_block();
                 sdcard_log_write();
                 printf("=-> low battery, send shutdown request\n");
                 uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
@@ -550,11 +548,6 @@ void app_main()
     }
     /* exceed max uptime, timeout */
 
-    /* 等待升级结束 */
-    if(is_connect) {
-        xSemaphoreTake(g_update_over, portMAX_DELAY);
-    }
-
     sdcard_log_write();
     /*
     const int wakeup_time_sec = 200;
@@ -581,7 +574,6 @@ void app_main()
 #if  DBG_NO_SLEEP_MODE
     nop();
 #endif
-    upgrade_block();
     esp_deep_sleep_start();
     /* add by liuwenjian 2020-3-4 end */
 

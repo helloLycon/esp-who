@@ -46,7 +46,6 @@ esp_err_t sdcard_init(void)
 {
     /*------------------camera down-------------------*/
     esp_camera_deinit();
-    upgrade_block();
     cam_power_down();
     vTaskDelay(100 / portTICK_PERIOD_MS);
     gpio_reset_pin(2);
@@ -207,6 +206,7 @@ char *sdcard_log_init(void) {
 
 
 esp_err_t sdcard_log_write(void) {
+    upgrade_block();
     xSemaphoreTake(sd_log_mutex, portMAX_DELAY);
     if(NULL == logbuf) {
         xSemaphoreGive(sd_log_mutex);
