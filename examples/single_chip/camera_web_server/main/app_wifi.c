@@ -45,6 +45,7 @@
 #include "app_wifi.h"
 #include "ymodem.h"
 #include "spiffs_example_main.h"
+#include "sd_card_example_main.h"
 #include "cat-eye-debug.h"
 
 /* The examples use WiFi configuration that you can set via 'make menuconfig'.
@@ -376,6 +377,7 @@ void simple_ota_example_task(void *pvParameter)
     if (ret == ESP_OK)
     {
         ESP_LOGI(TAG, "airbat_esp_https_ota succeed, thread quit");
+        log_printf("ota升级成功.");
         //esp_restart();
     }
     else 
@@ -393,6 +395,7 @@ void simple_ota_example_task(void *pvParameter)
         }
 #endif
         ESP_LOGE(TAG, "airbat_esp_https_ota failed, thread quit");
+        //log_printf("ota升级失败!!!");
     }
     for(int i=0; i<20; i++) {
         xSemaphoreGive(g_update_over);

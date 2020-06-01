@@ -274,15 +274,38 @@ int log_enum(enum log_type type) {
         return 0;
     }
     static const char * const str_list[] = {
-        [LOG_CONNECT_WIFI] = "connect wifi",
-        [LOG_CONNECT_SERVER] = "connect server",
-        [LOG_CAMERA_OVER] = "camera capture over",
-        [LOG_SEND_OVER] = "send data over",
-        [LOG_SEND_FAIL] = "send data failed",
-        [LOG_LOW_BATTERY] = "low battery",
+        [LOG_CONNECT_WIFI] = "连上wifi",
+        [LOG_CONNECT_SERVER] = "连上服务器",
+        [LOG_CAMERA_OVER] = "拍摄结束",
+        [LOG_SEND_OVER] = "发送数据完成",
+        [LOG_SEND_FAIL] = "发送数据失败",
+        [LOG_LOW_BATTERY] = "低电量",
+        [LOG_CONFIGURATION] = "蓝牙配置模式",
     };
+    if(type == LOG_CONFIGURATION) {
+        logbuf_offset = 0;
+    }
     char tmp[32];
     logbuf_offset += sprintf(logbuf+logbuf_offset, "[%s] %s\n", log_make_uptime(tmp), str_list[type]);
+    xSemaphoreGive(sd_log_mutex);
+    return 0;
+}
+
+int log_printf(const char *format, ...) {
+    xSemaphoreTake(sd_log_mutex, portMAX_DELAY);
+    if(NULL == logbuf) {
+        xSemaphoreGive(sd_log_mutex);
+        return 0;
+    }
+    char tmp[32];
+    logbuf_offset += sprintf(logbuf+logbuf_offset, "[%s] ", log_make_uptime(tmp));
+
+    va_list vlist;
+    va_start(vlist, format);
+    logbuf_offset += vsprintf(logbuf+logbuf_offset, format, vlist);
+    va_end(vlist);
+
+    logbuf_offset += sprintf(logbuf+logbuf_offset, "\n");
     xSemaphoreGive(sd_log_mutex);
     return 0;
 }

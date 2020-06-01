@@ -306,6 +306,7 @@ static void echo_task(void *arg)
             bool b1 = false == is_connect_server;
             portEXIT_CRITICAL(&is_connect_server_spinlock);
             if(b1 && b && oneTime == false) {
+                log_printf("连不上wifi或服务器");
                 sdcard_log_write();
                 ESP_LOGE(TAG, "=-> NO WIFI/SERVER CONNECTED, send shutdown request\n");
                 uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
@@ -367,6 +368,7 @@ static void echo_task(void *arg)
                 }
                 /* start bt */
                 gatts_init();
+                log_enum(LOG_CONFIGURATION);
 
                 portENTER_CRITICAL(&max_sleep_uptime_spinlock);
                 max_sleep_uptime = DEF_MAX_SLEEP_TIME+60;
@@ -531,7 +533,7 @@ void app_main()
 
     /* add by liuwenjian 2020-3-4 begin */
     /* 创建任务接收系统消息 */
-    xTaskCreate(echo_task, "uart_echo_task", 1024*2, NULL, 10, NULL);
+    xTaskCreate(echo_task, "uart_echo_task", 3072, NULL, 10, NULL);
 
     /* 等待摄像图片传送结束 */
     while (true)
@@ -548,7 +550,18 @@ void app_main()
     }
     /* exceed max uptime, timeout */
 
+    portENTER_CRITICAL(&max_sleep_uptime_spinlock);
+    int runtime = max_sleep_uptime;
+    portEXIT_CRITICAL(&max_sleep_uptime_spinlock);
+
+    ESP_LOGI(TAG, "run timed out(%d s)", runtime);
+    log_printf("运行超时 (%d 秒)", runtime);
+    /*----------write log-----------*/
     sdcard_log_write();
+    printf("=-> send shutdown request\n");
+    uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
+
+#if  0
     /*
     const int wakeup_time_sec = 200;
     printf("Enabling timer wakeup, %ds\n", wakeup_time_sec);
@@ -576,6 +589,6 @@ void app_main()
 #endif
     esp_deep_sleep_start();
     /* add by liuwenjian 2020-3-4 end */
-
+#endif
 }
 

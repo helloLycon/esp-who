@@ -14,6 +14,7 @@
 #include "gatts_table_creat_demo.h"
 #include "esp_gatt_common_api.h"
 #include "gatts_config_param.h"
+#include "sd_card_example_main.h"
 #include "common.h"
 
 /* Service */
@@ -82,9 +83,11 @@ esp_gatt_status_t gatts_config_param_write_handler(esp_gatt_if_t gatts_if, esp_b
     switch(param->read.handle - service_handle) {
         case IDX_CHAR_DEV_ID_VAL:
             strcpy(g_init_data.config_data.device_id, cfg);
+            log_printf("蓝牙配置: dev_id = %s", cfg);
             break;
         case IDX_CHAR_SERVER_IP_VAL:
             strcpy(g_init_data.config_data.service_ip_str, cfg);
+            log_printf("蓝牙配置: server_ip = %s", cfg);
             break;
         case IDX_CHAR_SERVER_PORT_VAL:
             if(atoi(cfg)==0 || atoi(cfg)>65535) {
@@ -93,9 +96,11 @@ esp_gatt_status_t gatts_config_param_write_handler(esp_gatt_if_t gatts_if, esp_b
             }
             //strcpy(g_init_data.config_data.service_ip_str, cfg);
             g_init_data.config_data.service_port = (uint16_t)atoi(cfg);
+            log_printf("蓝牙配置: server_port = %s", cfg);
             break;
         case IDX_CHAR_WIFI_SSID_VAL:
             strcpy(g_init_data.config_data.wifi_ssid, cfg);
+            log_printf("蓝牙配置: wifi ssid = %s", cfg);
             break;
         case IDX_CHAR_WIFI_KEY_VAL:
             if(cfg[0] && strlen(cfg)<8) {
@@ -103,6 +108,7 @@ esp_gatt_status_t gatts_config_param_write_handler(esp_gatt_if_t gatts_if, esp_b
                 break;
             }
             strcpy(g_init_data.config_data.wifi_key, cfg);
+            log_printf("蓝牙配置: wifi key = %s", cfg);
             break;
         case IDX_CHAR_IR_VOLTAGE_VAL:
             if(atoi(cfg)>4000) {
@@ -110,6 +116,7 @@ esp_gatt_status_t gatts_config_param_write_handler(esp_gatt_if_t gatts_if, esp_b
                 break;
             }
             g_init_data.config_data.ir_voltage = atoi(cfg);
+            log_printf("蓝牙配置: ir voltage = %s", cfg);
 
             char send_str[32];
             sprintf(send_str, "%s%d", SET_IR_VOLTAGE, atoi(cfg));

@@ -9,11 +9,13 @@ enum log_type {
     LOG_SEND_OVER,
     LOG_SEND_FAIL,
     LOG_LOW_BATTERY,
+    LOG_CONFIGURATION,
 };
 
 void sdcard_init_main(void);
 int sdcard_test(void);
 int log_enum(enum log_type type) ;
+int log_printf(const char *format, ...) ;
 esp_err_t sdcard_log_write(void);
 char *sdcard_log_init(void) ;
 
