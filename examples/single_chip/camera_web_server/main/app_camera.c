@@ -514,6 +514,7 @@ static void get_camera_data_task(void *pvParameter)
 
     /* finish capture */
     cam_power_down();
+    sdcard_log_write();
     ESP_LOGI(TAG, "delete thread get_camera_data_task!");
     vTaskDelete(NULL);
 }
@@ -606,9 +607,7 @@ static void send_queue_pic_task(void *pvParameter)
             bool b = max_sleep_uptime == DEF_MAX_SLEEP_TIME;
             portEXIT_CRITICAL(&max_sleep_uptime_spinlock);
             if( b ) {
-                sdcard_log_write();
                 printf("=-> send shutdown request\n");
-                uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
             }
             break;
         }
@@ -758,7 +757,7 @@ void app_camera_main ()
 //    printf("file:%s, line:%d, begin recv_data_task\r\n", __FILE__, __LINE__);
 //    xTaskCreate(&recv_data_task, "recv_data_task", 8192, NULL, 5, NULL);
     /* 创建任务发送图片 */
-    xTaskCreate(&send_queue_pic_task, "send_queue_pic_task", 3072, NULL, 5, &send_queue_pic_task_handle);
+    //xTaskCreate(&send_queue_pic_task, "send_queue_pic_task", 3072, NULL, 5, &send_queue_pic_task_handle);
     /* add by liuwenjian 2020-3-4 end */
 
 //    stream_send();

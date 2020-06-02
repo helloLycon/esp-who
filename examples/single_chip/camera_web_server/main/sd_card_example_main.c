@@ -25,7 +25,7 @@
 #include "common.h"
 
 static const char *TAG = "sdcard";
-static const char *filename = "/sdcard/log";
+static const char *filename = "/sdcard/test";
 
 static char *logbuf;
 static const int logbuf_size = 1024;
@@ -212,39 +212,44 @@ esp_err_t sdcard_log_write(void) {
         xSemaphoreGive(sd_log_mutex);
         return ESP_FAIL;
     }
+    const int mlcsz = 21*1024;
+    unsigned char *buf = (unsigned char *)malloc(mlcsz);
+    if(NULL == buf) {
+        ESP_LOGE(TAG, "malloc error");
+    }
+    for(int i=0; i<mlcsz; i++) {
+        buf[i] = i&0xff;
+        //printf("%02x ", buf[i]);
+    }
+    ESP_LOGI(TAG, "\n-------------------------------");
 
     esp_err_t ret = sdcard_init();
     if(ret != ESP_OK) {
         goto fail2;
     }
 
-    FILE* f = fopen(filename, "a");
+    FILE* f = fopen(filename, "w");
     if (f == NULL) {
         ret = ESP_FAIL;
         ESP_LOGE(TAG, "Failed to open file for writing");
         goto fail1;
     }
 
-    struct tm tmv;
-    time_t t = time(NULL) - xTaskGetTickCount()/configTICK_RATE_HZ;
-    localtime_r(&t, &tmv);
-    char tmp[64];
-    sprintf(tmp, "[%d-%d-%d %d:%02d:%02d]\n", tmv.tm_year+1900, tmv.tm_mon+1, tmv.tm_mday, tmv.tm_hour,tmv.tm_min,tmv.tm_sec);
-    size_t sz = fwrite(tmp, 1, strlen(tmp), f);
-    if(sz != strlen(tmp)) {
-        ret = ESP_FAIL;
-        ESP_LOGE(TAG, "Failed to write date(%d)", sz);
-        goto fail1;
+    for(int i=0; i<100; i++) {
+        size_t sz = fwrite(buf+i, 1, 20*1024, f);
+        if(sz != 20*1024) {
+            ESP_LOGE(TAG, "Failed to write (sz = %d)", sz);
+        }
     }
-
-    sz = fwrite(logbuf, 1, strlen(logbuf), f);
+    /*
+    //sz = fwrite(logbuf, 1, strlen(logbuf), f);
     if(sz != strlen(logbuf)) {
         ret = ESP_FAIL;
         ESP_LOGE(TAG, "Failed to write (%d)", sz);
         goto fail1;
     }
-
-    ESP_LOGI(TAG, "%s: OKAY", __func__);
+*/
+    //ESP_LOGI(TAG, "%s: OKAY", __func__);
 fail1:
     fclose(f);
 fail2:
@@ -252,6 +257,8 @@ fail2:
     free(logbuf);
     logbuf = NULL;
     xSemaphoreGive(sd_log_mutex);
+
+    ESP_LOGI(TAG, "============================");
     return ret;
 }
 

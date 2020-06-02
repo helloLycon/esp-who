@@ -22,7 +22,7 @@
 static const char *TAG = "example";
 
 RunLog run_log = {0};
-static const char *filename = "/spiffs/log";
+static const char *filename = "/spiffs/test";
 
 static bool is_reading = false;
 

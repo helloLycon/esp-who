@@ -307,9 +307,7 @@ static void echo_task(void *arg)
             portEXIT_CRITICAL(&is_connect_server_spinlock);
             if(b1 && b && oneTime == false) {
                 log_printf("连不上wifi或服务器");
-                sdcard_log_write();
                 ESP_LOGE(TAG, "=-> NO WIFI/SERVER CONNECTED, send shutdown request\n");
-                uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
                 oneTime = true;
                 continue;
                 //vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -323,7 +321,6 @@ static void echo_task(void *arg)
         //printf("len = %d\n", len);
         data[len] = '\0';
         if( strstr(data, CORE_SHUT_DOWN) ) {
-            sdcard_log_write();
             printf("=> core shut down recvd, call esp_deep_sleep_start()\n");
             uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_OK, strlen(CORE_SHUT_DOWN_OK)+1);
             /* 进入深度休眠 */
@@ -425,9 +422,7 @@ static void echo_task(void *arg)
             if(0 == vPercent) {
                 /* 防止电池过放，低压关机 */
                 log_enum(LOG_LOW_BATTERY);
-                sdcard_log_write();
                 printf("=-> low battery, send shutdown request\n");
-                uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
                 continue;
             }
             xSemaphoreGive(vpercent_ready);
@@ -557,9 +552,7 @@ void app_main()
     ESP_LOGI(TAG, "run timed out(%d s)", runtime);
     log_printf("运行超时 (%d 秒)", runtime);
     /*----------write log-----------*/
-    sdcard_log_write();
     printf("=-> send shutdown request\n");
-    uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
 
 #if  0
     /*
