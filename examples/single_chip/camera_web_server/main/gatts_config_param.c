@@ -4,6 +4,7 @@
 #include "freertos/event_groups.h"
 #include "esp_system.h"
 #include "esp_log.h"
+#include "esp_wifi.h"
 #include "nvs_flash.h"
 #include "esp_bt.h"
 #include "driver/uart.h"
@@ -15,6 +16,7 @@
 #include "esp_gatt_common_api.h"
 #include "gatts_config_param.h"
 #include "sd_card_example_main.h"
+#include "app_wifi.h"
 #include "common.h"
 
 /* Service */
@@ -107,8 +109,42 @@ esp_gatt_status_t gatts_config_param_write_handler(esp_gatt_if_t gatts_if, esp_b
                 status = ESP_GATT_INTERNAL_ERROR;
                 break;
             }
-            strcpy(g_init_data.config_data.wifi_key, cfg);
-            log_printf("蓝牙配置: wifi key = %s", cfg);
+            /* 尝试连接 */
+            const char *arg[2] = {g_init_data.config_data.wifi_ssid, cfg};
+            is_connect = FALSE;
+            s_retry_num = 0;
+            app_wifi_main(arg);
+
+            /* 验证wifi连接 */
+            int cnter = 0;
+            for(; cnter<5; cnter++) {
+                if(is_connect == TRUE) {
+                    break;
+                } else if(s_retry_num > 0) {
+                    /* 出现失败 */
+                    break;
+                } else {
+                    vTaskDelay(1000/ portTICK_PERIOD_MS);
+                }
+            }
+            if(TRUE == is_connect && 0 == s_retry_num) {
+                strcpy(g_init_data.config_data.wifi_key, cfg);
+                printf("correct wifi key~~\n");
+                log_printf("蓝牙配置: wifi key = %s", cfg);
+            } else {
+                status = ESP_GATT_INTERNAL_ERROR;
+            }
+            is_connect = FALSE;
+            s_retry_num = 0;
+            printf("---------- WIFI TEST END ----------\n");
+            esp_err_t err = esp_wifi_stop();
+            if(err != ESP_OK) {
+                ESP_LOGE(TAG, "esp_wifi_stop failed");
+            }
+            err = esp_wifi_deinit();
+            if(err != ESP_OK) {
+                ESP_LOGE(TAG, "esp_wifi_deinit failed");
+            }
             break;
         case IDX_CHAR_IR_VOLTAGE_VAL:
             if(atoi(cfg)>4000) {

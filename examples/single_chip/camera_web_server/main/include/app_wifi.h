@@ -36,7 +36,7 @@ extern "C" {
 #define EXAMPLE_IP_ADDR            CONFIG_SERVER_IP
 
 
-void app_wifi_main();
+void app_wifi_main(const char **);
 
 #ifdef __cplusplus
 }

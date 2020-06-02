@@ -520,12 +520,12 @@ void app_main()
 
     /* 检查是否需要时间同步 */
     if(rtc_sntp_needed()) {
-        app_wifi_main();
+        app_wifi_main(NULL);
         sntp_rtc_routine();
         app_camera_main();
     } else {
         app_camera_main();
-        app_wifi_main();
+        app_wifi_main(NULL);
     }
 
     //app_httpd_main();

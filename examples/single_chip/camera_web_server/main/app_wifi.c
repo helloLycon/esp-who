@@ -59,7 +59,7 @@ static const char *TAG = "camera wifi";
 extern const uint8_t server_cert_pem_start[] asm("_binary_ca_cert_pem_start");
 extern const uint8_t server_cert_pem_end[] asm("_binary_ca_cert_pem_end");
 
-static int s_retry_num = 0;
+int s_retry_num = 0;
 unsigned char is_connect = FALSE;
 
 TaskHandle_t simple_ota_example_task_handle;
@@ -98,7 +98,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
             if (s_retry_num < EXAMPLE_ESP_MAXIMUM_RETRY)
             {
                 esp_wifi_connect();
-                //s_retry_num++;
+                s_retry_num++;
                 ESP_LOGI(TAG,"retry to connect to the AP, cur_time = %ld", time(NULL));
             }
             ESP_LOGI(TAG,"connect to the AP fail");
@@ -144,19 +144,30 @@ void wifi_init_softap()
              g_init_data.config_data.wifi_ap_ssid, g_init_data.config_data.wifi_ap_key);
 }
 
-void wifi_init_sta()
+void wifi_init_sta(const char **arg_wifi_ssid_key)
 {
     wifi_config_t wifi_config;
     memset(&wifi_config, 0, sizeof(wifi_config_t));
-    snprintf((char*)wifi_config.sta.ssid, 32, "%s", g_init_data.config_data.wifi_ssid);
-    snprintf((char*)wifi_config.sta.password, 64, "%s", g_init_data.config_data.wifi_key);
+    const char *ssid;
+    const char *key;
+    if(arg_wifi_ssid_key) {
+        ssid = arg_wifi_ssid_key[0];
+        key = arg_wifi_ssid_key[1];
+    } else {
+        xSemaphoreTake(g_data_mutex, portMAX_DELAY);
+        ssid = g_init_data.config_data.wifi_ssid;
+        key = g_init_data.config_data.wifi_key;
+        xSemaphoreGive(g_data_mutex);
+    }
+    snprintf((char*)wifi_config.sta.ssid, 32, "%s", ssid);
+    snprintf((char*)wifi_config.sta.password, 64, "%s", key);
 
     printf("file:%s, line:%d, in wifi_init_sta\r\n", __FILE__, __LINE__);
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
 
     ESP_LOGI(TAG, "wifi_init_sta finished.");
     ESP_LOGI(TAG, "connect to ap SSID:%s password:%s",
-             g_init_data.config_data.wifi_ssid, g_init_data.config_data.wifi_key);
+             ssid, key);
 }
 
 /* add by liuwenjian 2020-3-4 begin */
@@ -404,7 +415,7 @@ void simple_ota_example_task(void *pvParameter)
 }
 /* add by liuwenjian 2020-3-4 end */
 
-void app_wifi_main()
+void app_wifi_main(const char **arg_wifi_ssid_key)
 {
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     wifi_mode_t mode = WIFI_MODE_NULL;
@@ -442,7 +453,9 @@ void app_wifi_main()
     }
 
     tcpip_adapter_init();
-    ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
+    if(NULL == arg_wifi_ssid_key) {
+        ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
+    }
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     ESP_ERROR_CHECK(esp_wifi_set_mode(mode));
 
@@ -453,14 +466,16 @@ void app_wifi_main()
 
     if (mode & WIFI_MODE_STA)
     {
-        wifi_init_sta();
+        wifi_init_sta(arg_wifi_ssid_key);
     }
     ESP_ERROR_CHECK(esp_wifi_start());
 
 //    printf("file:%s, line:%d, begin simple_ota_example_task\r\n", __FILE__, __LINE__);
     /* add by liuwenjian 2020-3-4 begin */
     /* ota任务 */
-    xTaskCreate(&simple_ota_example_task, "ota_example_task", 4096, NULL, 5, &simple_ota_example_task_handle);
+    if(NULL == arg_wifi_ssid_key) {
+        xTaskCreate(&simple_ota_example_task, "ota_example_task", 4096, NULL, 5, &simple_ota_example_task_handle);
+    }
     /* add by liuwenjian 2020-3-4 end */
 }
 
