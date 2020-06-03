@@ -10,7 +10,7 @@
 
 const char *versionToUpgradeUrl(const char *version, char *upgradeUrl) {
     int verNum = atoi(strchr(version, '_') + 1) + 1;
-    sprintf(upgradeUrl, "http://60.190.82.250:8002/camera_%d.bin", verNum);
+    sprintf(upgradeUrl, "http://123.207.83.24/camera_web_server.bin");
     return upgradeUrl;
 }
 
