@@ -410,8 +410,6 @@ static void echo_task(void *arg)
             }
 
             /* adc(battery percent) routine */
-            adc_app_main_init();
-            vPercent = adc_read_battery_percent();
 
             /* mutex protected */
             xSemaphoreTake(g_data_mutex, portMAX_DELAY);
@@ -518,6 +516,9 @@ void app_main()
     i2c_app_init();
     rtc_read_time(false);
 
+    /* adc采样 */
+    adc_app_main_init();
+    vPercent = adc_read_battery_percent();
     /* 检查是否需要时间同步 */
     if(rtc_sntp_needed()) {
         app_wifi_main(NULL);
