@@ -44,17 +44,6 @@ static xSemaphoreHandle sd_log_mutex;
 
 esp_err_t sdcard_init(void)
 {
-    /*------------------camera down-------------------*/
-    esp_camera_deinit();
-    cam_power_down();
-    vTaskDelay(100 / portTICK_PERIOD_MS);
-    gpio_reset_pin(2);
-    gpio_reset_pin(4);
-    gpio_reset_pin(12);
-    gpio_reset_pin(13);
-    gpio_reset_pin(14);
-    gpio_reset_pin(15);
-
     /*------------------start init sdcard-------------------*/
     ESP_LOGI(TAG, "Initializing SD card");
 
@@ -164,23 +153,6 @@ void sdcard_deinit(void) {
     ESP_LOGI(TAG, "Card unmounted");
 }
 
-int __sdcard_test(void) {
-    esp_camera_deinit();
-    cam_power_down();
-    vTaskDelay(100 / portTICK_PERIOD_MS);
-    gpio_reset_pin(2);
-    gpio_reset_pin(4);
-    gpio_reset_pin(12);
-    gpio_reset_pin(13);
-    gpio_reset_pin(14);
-    gpio_reset_pin(15);
-    printf("-----------> init sdcard\n");
-    sdcard_init_main();
-    
-    vTaskDelay(1000000 / portTICK_PERIOD_MS);
-    return 0;
-}
-
 char *sdcard_log_init(void) {
     logbuf = (char *)malloc(logbuf_size);
     if(NULL == logbuf) {
@@ -206,6 +178,7 @@ char *sdcard_log_init(void) {
 
 
 esp_err_t sdcard_log_write(void) {
+    esp_err_t ret;
     upgrade_block();
     xSemaphoreTake(sd_log_mutex, portMAX_DELAY);
     if(NULL == logbuf) {
@@ -213,10 +186,12 @@ esp_err_t sdcard_log_write(void) {
         return ESP_FAIL;
     }
 
+#if 0
     esp_err_t ret = sdcard_init();
     if(ret != ESP_OK) {
         goto fail2;
     }
+#endif
 
     FILE* f = fopen(filename, "a");
     if (f == NULL) {
@@ -247,7 +222,6 @@ esp_err_t sdcard_log_write(void) {
     ESP_LOGI(TAG, "%s: OKAY", __func__);
 fail1:
     fclose(f);
-fail2:
     sdcard_deinit();
     free(logbuf);
     logbuf = NULL;

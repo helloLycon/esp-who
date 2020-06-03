@@ -414,7 +414,7 @@ static void echo_task(void *arg)
             /* mutex protected */
             xSemaphoreTake(g_data_mutex, portMAX_DELAY);
             fix_battery_percent(&vPercent, &g_init_data.config_data.last_btry_percent);
-            printf("vPercent = %d%%\n", vPercent);
+            printf("=-> vPercent = %d%%\n", vPercent);
             if(g_init_data.config_data.last_btry_percent != vPercent) {
                 g_init_data.config_data.last_btry_percent = vPercent;
                 store_init_data();
@@ -535,6 +535,7 @@ void app_main()
     /* add by liuwenjian 2020-3-4 begin */
     /* 创建任务接收系统消息 */
     xTaskCreate(echo_task, "uart_echo_task", 3072, NULL, 10, NULL);
+    sdcard_init();
 
     /* 等待摄像图片传送结束 */
     while (true)

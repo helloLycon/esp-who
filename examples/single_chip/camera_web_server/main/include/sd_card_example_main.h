@@ -12,6 +12,7 @@ enum log_type {
     LOG_CONFIGURATION,
 };
 
+esp_err_t sdcard_init(void);
 void sdcard_init_main(void);
 int sdcard_test(void);
 int log_enum(enum log_type type) ;
