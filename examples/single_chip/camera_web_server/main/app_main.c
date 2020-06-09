@@ -459,6 +459,13 @@ int led_gpio_init(void) {
     return 0;
 }
 
+const char *mk_win_time_str(const time_t t,char *str) {
+    struct tm tmv;
+    localtime_r(&t, &tmv);
+    sprintf(str, "%d-%d-%d_%d-%02d-%02d", tmv.tm_year+1900, tmv.tm_mon+1, tmv.tm_mday, tmv.tm_hour,tmv.tm_min,tmv.tm_sec);
+    return str;
+}
+
 void app_main()
 {
     int count = 0;
@@ -535,7 +542,7 @@ void app_main()
     /* add by liuwenjian 2020-3-4 begin */
     /* 创建任务接收系统消息 */
     xTaskCreate(echo_task, "uart_echo_task", 3072, NULL, 10, NULL);
-    sdcard_init();
+    xTaskCreate(save_video_into_sdcard_task, "save_video", 2048, NULL, 10, NULL);
 
     /* 等待摄像图片传送结束 */
     while (true)

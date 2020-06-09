@@ -84,6 +84,8 @@ extern portMUX_TYPE g_pic_send_over_spinlock;
 extern bool wake_up_flag;
 extern xSemaphoreHandle vpercent_ready;
 extern xSemaphoreHandle g_data_mutex;
+extern xSemaphoreHandle vq_upload_trigger;
+extern xSemaphoreHandle vq_save_trigger;
 extern unsigned char is_connect;
 extern int s_retry_num;
 extern TaskHandle_t get_camera_data_task_handle;
@@ -93,6 +95,7 @@ extern TaskHandle_t simple_ota_example_task_handle;
 void upgrade_block(void) ;
 int led_gpio_init(void);
 esp_err_t store_init_data(void);
+const char *mk_win_time_str(const time_t t,char *str);
 
 
 #endif

@@ -23,8 +23,10 @@
 #include "esp_sleep.h"
 #include "sd_card_example_main.h"
 #include "common.h"
+#include "video-queue.h"
 
 static const char *TAG = "sdcard";
+static const char *tag = "sdcard";
 static const char *filename = "/sdcard/log";
 
 static char *logbuf;
@@ -41,6 +43,8 @@ static xSemaphoreHandle sd_log_mutex;
 // When testing SD and SPI modes, keep in mind that once the card has been
 // initialized in SPI mode, it can not be reinitialized in SD mode without
 // toggling power to the card.
+
+
 
 esp_err_t sdcard_init(void)
 {
@@ -282,5 +286,164 @@ int log_printf(const char *format, ...) {
     logbuf_offset += sprintf(logbuf+logbuf_offset, "\n");
     xSemaphoreGive(sd_log_mutex);
     return 0;
+}
+
+
+pic_queue *save_pic_pointer = NULL;
+FILE *sdfp = NULL;
+FILE *rd_sdfp = NULL;
+
+int wr_sdcard_fp_open(bool force_reinit, time_t t) {
+    if(force_reinit) {
+        /* 重新打开文件 */
+        if(sdfp) {
+            fclose(sdfp);
+            sdfp = NULL;
+        }
+    }
+    if(NULL == sdfp) {
+        char tmp[64];
+        //video_queue *v = pic->video;
+        sdfp = fopen(mk_sd_time_fname(t, tmp), "w");
+        if(NULL == sdfp) {
+            ESP_LOGE(TAG, "fopen failed in %s", __func__);
+            vTaskDelete(NULL);
+        }
+        return ESP_OK;
+    }
+    return ESP_OK;
+}
+
+void wr_sdcard_fp_close(void) {
+    if(sdfp) {
+        fclose(sdfp);
+        sdfp = NULL;
+    }
+}
+
+int rd_sdcard_fp_open(bool force_reinit, time_t t) {
+    if(force_reinit) {
+        /* 重新打开文件 */
+        if(rd_sdfp) {
+            fclose(rd_sdfp);
+            rd_sdfp = NULL;
+        }
+    }
+    if(NULL == rd_sdfp) {
+        char tmp[64];
+        //video_queue *v = pic->video;
+        rd_sdfp = fopen(mk_sd_time_fname(t, tmp), "r");
+        if(NULL == rd_sdfp) {
+            ESP_LOGE(TAG, "fopen failed in %s", __func__);
+            vTaskDelete(NULL);
+        }
+        return ESP_OK;
+    }
+    return ESP_OK;
+}
+
+void rd_sdcard_fp_close(void) {
+    if(rd_sdfp) {
+        fclose(rd_sdfp);
+        rd_sdfp = NULL;
+    }
+}
+
+const char *mk_sd_fname(const char *name, char *tmp) {
+    sprintf(tmp, "/sdcard/%s", name);
+    return tmp;
+}
+
+const char *mk_sd_time_fname(time_t t, char *tmp) {
+    char timestr[32];
+    mk_win_time_str(t, timestr);
+    return mk_sd_fname(timestr, tmp);
+}
+
+int read_one_pic_from_sdcard(pic_queue *pic) {
+    video_queue *vid = pic->video;
+    rd_sdcard_fp_open(false, vid->time);
+    if(fseek(rd_sdfp, pic->offset, SEEK_SET)<0) {
+        ESP_LOGE(tag, "fseek failed in %s", __func__);
+        return ESP_FAIL;
+    }
+    if(fread(pic->pic_info, 1, pic->pic_len, rd_sdfp) != pic->pic_len) {
+        ESP_LOGE(tag, "fread failed in %s", __func__);
+        return ESP_FAIL;
+    }
+    return ESP_OK;
+}
+
+int save_one_pic_into_sdcard(pic_queue *pic) {
+    video_queue *video = pic->video;
+    wr_sdcard_fp_open(false, video->time);
+
+    //sdfp = fopen(mk_sd_time_fname(v->time, tmp), "w");
+    size_t writesz = PIC_DATA_OFFSET + pic->pic_len;
+    size_t sz = fwrite(pic, 1, writesz, sdfp);
+    if(sz != writesz) {
+        ESP_LOGE(tag, "fwrite failed in %s", __func__);
+        return ESP_FAIL;
+    }
+    /* 马上flush分担负载 */
+    fflush(sdfp);
+    return ESP_OK;
+}
+
+void sd_complete_video(void) {
+    wr_sdcard_fp_close();
+    mv_video2sdcard(vq_tail);
+}
+
+void abort_sdcard_task(void) {
+    //sd_complete_video();
+    vTaskDelete(NULL);
+}
+
+void sd_handle_pic(pic_queue *pic) {
+    if(pic->pic_len) {
+        int err = save_one_pic_into_sdcard(pic);
+        if(err != ESP_OK) {
+            /* end */
+            abort_sdcard_task();
+        }
+    } else {
+        sd_complete_video();
+    }
+}
+
+
+void save_video_into_sdcard_task(void *arg) {
+    sdcard_init();
+    for(;;) {
+        /* wait for condition */
+        xSemaphoreTake(vq_save_trigger, portMAX_DELAY);
+        for(;;) {
+            /* 保存图片 */
+            if(save_pic_pointer) {
+                sd_handle_pic(save_pic_pointer);
+            } else {
+                //sd_complete_video();
+                /* 不会到这里 */
+                break;
+            }
+            /* 尝试下一张图片 */
+            video_queue *video = save_pic_pointer->video;
+            if(save_pic_pointer->next) {
+                /* next picture in same video */
+                save_pic_pointer = save_pic_pointer->next;
+            } else if(video->next && video->next->head_pic) {
+                /* new video */
+                save_pic_pointer = video->next->head_pic;
+                wr_sdcard_fp_open(true, video->next->time);
+            } else {
+                /* nothing else */
+                save_pic_pointer = NULL;
+                break;
+            }
+        }
+
+
+    }
 }
 

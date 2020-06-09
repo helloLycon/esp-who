@@ -24,6 +24,8 @@
 #ifndef _APP_CAMERA_H_
 #define _APP_CAMERA_H_
 
+#include "video-queue.h"
+
 #if CONFIG_CAMERA_MODEL_WROVER_KIT
 #define PWDN_GPIO_NUM    -1
 #define RESET_GPIO_NUM   -1
@@ -149,20 +151,21 @@ extern "C" {
 #define HAVE_DATA               0x01
 #define NOT_HAVE_DATA           0x00
 
-/* 图片存储队列 */
-typedef struct pic_queue
-{
-    struct pic_queue *next;
-    int pic_len;
-    time_t cur_time;
-    unsigned char *pic_info;
-}pic_queue;
 
-void app_camera_main();
+int app_camera_main();
 int cam_power_down(void);
 
 extern bool is_connect_server;
 extern portMUX_TYPE is_connect_server_spinlock;
+extern xSemaphoreHandle vq_save_trigger;
+extern xSemaphoreHandle vq_upload_trigger;
+extern xSemaphoreHandle start_capture_trigger;
+extern xSemaphoreHandle save_pic_completed;
+extern pic_queue *upload_pic_pointer;
+
+extern pic_queue *g_pic_queue_head;
+
+extern bool capture_halt;
 
 #ifdef __cplusplus
 }

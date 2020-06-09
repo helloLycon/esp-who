@@ -45,9 +45,7 @@
 #include "spiffs_example_main.h"
 
 static const char *TAG = "app_camera";
-/* add by liuwenjian 2020-3-4 begin */
-pic_queue *g_pic_queue_head = NULL;
-pic_queue *g_pic_queue_tail = NULL;
+
 bool g_camera_power = true;
 
 portMUX_TYPE is_connect_server_spinlock = portMUX_INITIALIZER_UNLOCKED;
@@ -55,6 +53,17 @@ bool is_connect_server = false;
 
 TaskHandle_t get_camera_data_task_handle;
 TaskHandle_t send_queue_pic_task_handle;
+
+/* there is something to do with video queue */
+xSemaphoreHandle vq_save_trigger;
+xSemaphoreHandle vq_upload_trigger;
+xSemaphoreHandle start_capture_trigger;
+xSemaphoreHandle save_pic_completed;
+pic_queue *upload_pic_pointer;
+
+pic_queue *g_pic_queue_head;
+
+bool capture_halt = false;
 
 static int send_jpeg(pic_queue *send_pic)
 {
@@ -72,6 +81,7 @@ static int send_jpeg(pic_queue *send_pic)
     esp_err_t sock_ret = ESP_OK;
 //    struct timeval start_tv, end_tv;
     static unsigned long sn = 1;
+    pic_queue *sd_pic = NULL;
 
 //    vTaskDelay(10000);
 
@@ -89,6 +99,14 @@ static int send_jpeg(pic_queue *send_pic)
 //        gettimeofday(&start_tv, NULL);
         if (NULL != send_pic)
         {
+            /*------------------判断mem/sdcard-------------------*/
+            video_queue *v = send_pic->video;
+            if(v->is_in_sdcard) {
+                sd_pic = malloc(PIC_DATA_OFFSET + send_pic->pic_len);
+                memcpy(sd_pic, send_pic, sizeof(pic_queue));
+                read_one_pic_from_sdcard(sd_pic);
+                send_pic = sd_pic;
+            }
             // init md5
             my_MD5Init(&md5);
             
@@ -98,7 +116,9 @@ static int send_jpeg(pic_queue *send_pic)
                 {
                     my_MD5Update(&md5, (send_pic->pic_info + send_len), APP_PACKET_DATA_LEN);
                     jpeg_data.buf = send_pic->pic_info + send_len;
-                    jpeg_data.create_time = send_pic->cur_time;
+                    v = send_pic->video;
+                    //jpeg_data.create_time = send_pic->cur_time;
+                    jpeg_data.create_time = v->time;
                     jpeg_data.num = sn;
                     jpeg_data.send_count = send_len;
                     packet_send_data.data = (void *)(&jpeg_data);
@@ -113,6 +133,9 @@ static int send_jpeg(pic_queue *send_pic)
                     {
                         printf("file:%s, line:%d, send_data failed\r\n", __FILE__, __LINE__);
                         close_socket();
+                        if(sd_pic) {
+                            free(sd_pic);
+                        }
                         return ret;
                     }
     /*                else
@@ -132,7 +155,9 @@ static int send_jpeg(pic_queue *send_pic)
                 {
                     my_MD5Update(&md5, (send_pic->pic_info + send_len), (send_pic->pic_len - send_len));
                     jpeg_data.buf = send_pic->pic_info + send_len;
-                    jpeg_data.create_time = send_pic->cur_time;
+                    v = send_pic->video;
+                    //jpeg_data.create_time = send_pic->cur_time;
+                    jpeg_data.create_time = v->time;
                     jpeg_data.num = sn;
                     jpeg_data.send_count = send_len;
                     packet_send_data.data = (void *)(&jpeg_data);
@@ -147,6 +172,9 @@ static int send_jpeg(pic_queue *send_pic)
                     {
                         printf("file:%s, line:%d, send_data failed\r\n", __FILE__, __LINE__);
                         close_socket();
+                        if(sd_pic) {
+                            free(sd_pic);
+                        }
                         return ret;
                     }
     /*                else
@@ -173,7 +201,9 @@ static int send_jpeg(pic_queue *send_pic)
             
     //        packet_send_data.buf = buf + send_len;
             jpeg_data.buf = (unsigned char *)md5_str;
-            jpeg_data.create_time = send_pic->cur_time;
+            v = send_pic->video;
+            //jpeg_data.create_time = send_pic->cur_time;
+            jpeg_data.create_time = v->time;
             jpeg_data.num = sn;
             sn++;
             jpeg_data.send_count = send_len;
@@ -189,28 +219,15 @@ static int send_jpeg(pic_queue *send_pic)
             {
                 printf("file:%s, line:%d, send_data failed\r\n", __FILE__, __LINE__);
                 close_socket();
+                if(sd_pic) {
+                    free(sd_pic);
+                }
                 return ret;
             }
-/*        else
-        {
-//            printf("file:%s, line:%d, begin recv_data\r\n", __FILE__, __LINE__);
-            ret = recv_data();
-            if (0 != ret)
-            {
-                printf("file:%s, line:%d, recv_data failed ret = %d\r\n", __FILE__, __LINE__, ret);
-                close_socket();
-                return ;
-            }
-        }*/
-        
-/*        gettimeofday(&end_tv, NULL);
-        send_time = (end_tv.tv_sec - start_tv.tv_sec) * 1000000 + (end_tv.tv_usec - start_tv.tv_usec);
-        rate = send_pic->pic_len * 1000 / send_time;*/
-//        printf("file:%s, line:%d, len = %d, send_time = %lu, rate = %d, time = %ld\r\n", 
-//            __FILE__, __LINE__, len, send_time, rate, end_tv.tv_sec);
         }
         else
         {
+            rd_sdcard_fp_close();
             jpeg_data.buf = NULL;
             jpeg_data.create_time = 0;
             jpeg_data.num = 0xffff;
@@ -236,84 +253,10 @@ static int send_jpeg(pic_queue *send_pic)
         return CAMERA_ERROR_CREATE_SOCKET_FAILED;
     }
 
+    if(sd_pic) {
+        free(sd_pic);
+    }
     return CAMERA_OK;
-}
-
-/* 图片出队函数 */
-void pic_out_queue()
-{
-    int ret;
-    pic_queue *send_pic = g_pic_queue_head;
-
-    if (NULL == send_pic)
-    {
-        printf("file:%s, line:%d, queue is empty!\r\n", __FILE__, __LINE__);
-        return ;
-    }
-
-    //printf("file:%s, line:%d, send_pic = %p, next = %p, len = %d\r\n", 
-    //    __FILE__, __LINE__, send_pic, send_pic->next, send_pic->pic_len);
-    ret = send_jpeg(send_pic);
-    if (CAMERA_OK != ret)
-    {
-        printf("file:%s, line:%d, send_jpeg failed! ret = %d\r\n", __FILE__, __LINE__, ret);
-        return ;
-    }
-
-    g_pic_queue_head = g_pic_queue_head->next;
-    if (NULL == g_pic_queue_head)
-    {
-        g_pic_queue_tail = NULL;
-    }
-
-    free(send_pic->pic_info);
-    free(send_pic);
-    send_pic = NULL;
-
-    return ;
-}
-
-/* 图片入队函数 */
-void pic_in_queue(int len, unsigned char *buf)
-{
-    pic_queue *cur_pic = NULL;
-    cur_pic = (pic_queue *)malloc(sizeof(pic_queue));
-    if (NULL == cur_pic)
-    {
-        printf("file:%s, line:%d, malloc %d, failed!\r\n", __FILE__, __LINE__, sizeof(pic_queue));
-        return ;
-    }
-
-    cur_pic->pic_info = (unsigned char *)malloc((len + 1));
-    if (NULL == cur_pic->pic_info)
-    {
-        free(cur_pic);
-        printf("file:%s, line:%d, malloc %d, failed!\r\n", __FILE__, __LINE__, len);
-        return ;
-    }
-    cur_pic->next = NULL;
-    cur_pic->pic_len = len;
-    memcpy(cur_pic->pic_info, buf, len);
-    cur_pic->cur_time = time(NULL);
-    
-    if (NULL != g_pic_queue_tail)
-    {
-        g_pic_queue_tail->next = cur_pic;
-//        printf("file:%s, line:%d, in pic_in_queue, tail = %p, next = %p, head = %p\r\n", 
-//            __FILE__, __LINE__, g_pic_queue_tail, g_pic_queue_tail->next, g_pic_queue_head);
-//        printf("file:%s, line:%d, g_pic_queue_tail = %p, g_pic_queue_tail->next = %p, g_pic_queue_head = %p\r\n", 
-//            __FILE__, __LINE__, g_pic_queue_tail, g_pic_queue_tail->next, g_pic_queue_head);
-        g_pic_queue_tail = cur_pic;
-//        printf("file:%s, line:%d, g_pic_queue_tail = %p, g_pic_queue_tail->next = %p, g_pic_queue_head = %p\r\n", 
-//            __FILE__, __LINE__, g_pic_queue_tail, g_pic_queue_tail->next, g_pic_queue_head);
-    }
-    else
-    {
-        g_pic_queue_tail = cur_pic;
-        g_pic_queue_head = cur_pic;
-    }
-
-    return ;
 }
 
 void send_heartbeat_packet()
@@ -384,106 +327,95 @@ int cam_power_down(void) {
     return -1;
 }
 
-static esp_err_t stream_send()
-{
-    char timeStr[32];
-    uint8_t reg[8];
-    time_t timeValue;
-    struct tm tmValue, rtcValue;
+void camera_start_capture(void) {
+    ESP_LOGI(TAG, "sem give start_capture_trigger");
+    xSemaphoreGive(start_capture_trigger);
+}
+
+void camera_finish_capture(void) {
+    vq_tail->complete = true;
+    /* 伪图片，代表视频结束 */
+    pic_in_queue(vq_tail, 0, NULL);
+    if(NULL == upload_pic_pointer) {
+        upload_pic_pointer = vq_tail->tail_pic;
+    }
+    if(NULL == save_pic_pointer) {
+        save_pic_pointer = vq_tail->tail_pic;
+    }
+    xSemaphoreGive(vq_save_trigger);
+    xSemaphoreGive(vq_upload_trigger);
+}
+
+void camera_drop_capture(void) {
+    capture_halt = true;
+    drop_video(vq_tail);
+}
+
+int camera_capture_one_video(void) {
     camera_fb_t *fb = NULL;
-    esp_err_t res = ESP_OK;
     size_t _jpg_buf_len = 0;
     uint8_t *_jpg_buf = NULL;
-    uint32_t old_time, cur_time;
 
-#if 0
-//    uint8_t *ptr = NULL;
-//    char *part_buf[64];
-    printf("file:%s, line:%d, begin esp_wait_sntp_sync\r\n", __FILE__, __LINE__);
-    /* add by liuwenjian 2020-3-4 begin */
-    /* 用于时间同步 */
-    esp_wait_sntp_sync();
-    time(&timeValue);
-    localtime_r(&timeValue, &tmValue);
-    pcf8563RtcRead(I2C_RTC_MASTER_NUM, reg);
-    pcf8563RtcToString(reg, timeStr);
-    printf("==> rtc: %s\r\n", timeStr);
-    pcf8563RtcWrite(I2C_RTC_MASTER_NUM, &tmValue);
-    printf("file:%s, line:%d, ---->(%d-%02d-%02d %02d:%02d:%02d)\r\n", __FILE__, __LINE__, tmValue.tm_year+1900, tmValue.tm_mon+1, tmValue.tm_mday, tmValue.tm_hour, tmValue.tm_min, tmValue.tm_sec);
+    ESP_LOGI(TAG, "<---------CAPTURE VIDEO--------->");
+    new_video();
 
-//    int64_t test_frame = 0;
-    g_init_data.start_time = time(NULL);
-
-    /* 用于发送心跳包 */
-    send_heartbeat_packet();
-    /* add by liuwenjian 2020-3-4 end */
-
-#ifdef CONFIG_LED_ILLUMINATOR_ENABLED
-    enable_led(true);
-    isStreaming = true;
-#endif
-
-#endif
-    /* modify by liuwenjian 2020-3-4 begin */
-    /* 录像计时 */
-    cur_time = old_time = xTaskGetTickCount();
-    printf("file:%s, line:%d, begin while, cur_time = %d\r\n", __FILE__, __LINE__, cur_time);
-    ESP_LOGI(TAG, "<---------START CAPTURE--------->");
-    while (false == g_camera_over)
-    {
+    for(;;) {
         fb = esp_camera_fb_get();
-    
-//        printf("file:%s, line:%d, fb = %p\r\n", __FILE__, __LINE__, fb);
+
         if (!fb)
         {
             ESP_LOGE(TAG, "Camera capture failed");
-            res = ESP_FAIL;
+            //res = ESP_FAIL;
         }
         else
         {
-                if (fb->format != PIXFORMAT_JPEG)
+            _jpg_buf_len = fb->len;
+            _jpg_buf = fb->buf;
+
+            /* 结束拍摄 */
+            if(capture_halt || vq_tail->complete) {
+                /* free framebuffer */
+                if (fb)
                 {
-                    bool jpeg_converted = frame2jpg(fb, 80, &_jpg_buf, &_jpg_buf_len);
                     esp_camera_fb_return(fb);
                     fb = NULL;
-                    if (!jpeg_converted)
-                    {
-                        ESP_LOGE(TAG, "JPEG compression failed");
-                        res = ESP_FAIL;
-                    }
+                    _jpg_buf = NULL;
                 }
-                else
+                else if (_jpg_buf)
                 {
-                    _jpg_buf_len = fb->len;
-                    _jpg_buf = fb->buf;
-//                    printf("file:%s, line:%d, fb->len = %d, time = %ld\r\n", 
-//                        __FILE__, __LINE__, fb->len, time(NULL));
-                    /* 图片入队列 */
-                    if(false == g_camera_over) {
-                        pic_in_queue(fb->len, fb->buf);
-                    }
-//                    send_jpeg(fb->len, fb->buf);
-                    cur_time = xTaskGetTickCount();
-                    if ((cur_time - old_time > (CAMERA_VIDEO_TIME*configTICK_RATE_HZ) ) && (false == g_camera_over))
-                    {
-                        /* 超时结束录制 */
-                        printf("file:%s, line:%d, camera over, cur_time = %d\r\n", __FILE__, __LINE__, cur_time);
-                        g_camera_over = true;
-                        log_enum(LOG_CAMERA_OVER);
-                        break;
-                    }
-/*                    ptr = (uint8_t *)malloc(fb->len);
-                    if (NULL == ptr)
-                    {
-                        printf("file:%s, line:%d, time = %ld, malloc failed!\r\n", 
-                            __FILE__, __LINE__, time(NULL));
-                    }*/
-//                    test_frame = esp_timer_get_time();
-//                    printf("file:%s, line:%d, test_frame = %lld, time = %ld\r\n", 
-//                        __FILE__, __LINE__, test_frame, time(NULL));
+                    free(_jpg_buf);
+                    _jpg_buf = NULL;
                 }
+                capture_halt = false;
+                return ESP_OK;
+            }
+            /* 图片入队列 */
+            pic_in_queue(vq_tail, fb->len, fb->buf);
+
+            /* 如果上传或者保存的资源没了，赋新值 */
+            if(NULL == upload_pic_pointer) {
+                upload_pic_pointer = vq_tail->tail_pic;
+            }
+            if(NULL == save_pic_pointer) {
+                save_pic_pointer = vq_tail->tail_pic;
+            }
+            
+            xSemaphoreGive(vq_save_trigger);
+            xSemaphoreGive(vq_upload_trigger);
+#if 0
+            cur_time = xTaskGetTickCount();
+            if ((cur_time - old_time > (CAMERA_VIDEO_TIME*configTICK_RATE_HZ) ) && (false == g_camera_over))
+            {
+                /* 超时结束录制 */
+                printf("file:%s, line:%d, camera over, cur_time = %d\r\n", __FILE__, __LINE__, cur_time);
+                g_camera_over = true;
+                log_enum(LOG_CAMERA_OVER);
+                break;
+            }
+#endif
         }
 
+        /* free framebuffer */
         if (fb)
         {
             esp_camera_fb_return(fb);
@@ -496,27 +428,49 @@ static esp_err_t stream_send()
             _jpg_buf = NULL;
         }
     }
-    
-    /* modify by liuwenjian 2020-3-4 end */
-
-#ifdef CONFIG_LED_ILLUMINATOR_ENABLED
-    isStreaming = false;
-    enable_led(false);
-#endif
-
-    return res;
 }
 
+static void camera_capture_task(void *arg)
+{
+    char timeStr[32];
+    uint8_t reg[8];
+    time_t timeValue;
+    struct tm tmValue, rtcValue;
+    esp_err_t res = ESP_OK;
+    uint32_t old_time, cur_time;
+
+
+    /* 录像计时 */
+    cur_time = old_time = xTaskGetTickCount();
+    for(;;)
+    {
+        /* wait */
+        xSemaphoreTake(start_capture_trigger, portMAX_DELAY);
+        while(true) {
+            if (vq_tail && false == vq_tail->is_in_sdcard) {
+                /* 内存里还有数据 */
+                xSemaphoreTake(save_pic_completed, portMAX_DELAY);
+            } else {
+                break;
+            }
+        }
+        camera_capture_one_video();
+    }
+
+}
+
+#if 0
 /* 获取摄像头图形并发送 */
 static void get_camera_data_task(void *pvParameter)
 {
-    stream_send();
+    camera_capture_task();
 
     /* finish capture */
-    cam_power_down();
+    //cam_power_down();
     ESP_LOGI(TAG, "delete thread get_camera_data_task!");
     vTaskDelete(NULL);
 }
+#endif
 
 /* 接收服务器数据 */
 static void recv_data_task(void *pvParameter)
@@ -552,15 +506,6 @@ static void recv_data_task(void *pvParameter)
     vTaskDelete(NULL);
 }
 
-static void flash_led(void) {
-    for (int i=0; i<3;i++) {
-        vTaskDelay(50 / portTICK_PERIOD_MS);
-        gpio_set_level(15, 0);
-        vTaskDelay(50 / portTICK_PERIOD_MS);
-        gpio_set_level(15, 1);
-    }
-}
-
 /* 队列读取图片并发送出去 */
 static void send_queue_pic_task(void *pvParameter)
 {
@@ -581,7 +526,42 @@ static void send_queue_pic_task(void *pvParameter)
     /* 用于发送心跳包 */
     send_heartbeat_packet();
 
-    while (true)
+    for(;;) {
+        xSemaphoreTake(vq_upload_trigger, portMAX_DELAY);
+        for(;;) {
+            if(upload_pic_pointer) {
+                if(upload_pic_pointer->pic_len) {
+                    send_jpeg(upload_pic_pointer);
+                } else {
+                    /* last pseudo pic */
+                    send_jpeg(NULL);
+                    drop_video(upload_pic_pointer->video);
+                }
+            } else {
+                /* ? */
+                break;
+            }
+
+            /* 尝试下一张图片 */
+            video_queue *video = upload_pic_pointer->video;
+            if(upload_pic_pointer->next) {
+                /* next picture */
+                upload_pic_pointer = upload_pic_pointer->next;
+            } else if(video->next && video->next->head_pic) {
+                /* new video */
+                upload_pic_pointer = video->next->head_pic;
+            } else {
+                /* nothing else */
+                upload_pic_pointer = NULL;
+                break;
+            }
+        }
+    }
+
+#if  0
+    /* 老代码，执行不到这里 */
+    ESP_LOGE(TAG, "老代码 %s", __func__);
+    while (false)
     {
         if ((NULL == g_pic_queue_head)&&(true == g_camera_over)) 
         {
@@ -624,11 +604,12 @@ static void send_queue_pic_task(void *pvParameter)
             vTaskDelay(200 / portTICK_PERIOD_MS);
         }
     }
+#endif
 
     vTaskDelete(NULL);
 }
 
-void app_camera_main ()
+int app_camera_main ()
 {
 #if CONFIG_CAMERA_MODEL_ESP_EYE
     /* IO13, IO14 is designed for JTAG by default,
@@ -733,7 +714,7 @@ void app_camera_main ()
         upgrade_block();
         printf("sleep_______\n");
         esp_deep_sleep_start();
-        return;
+        return ESP_FAIL;
     }
 
 //    printf("file:%s, line:%d, begin esp_camera_sensor_get, time = %ld\r\n", __FILE__, __LINE__, time(NULL));
@@ -751,10 +732,29 @@ void app_camera_main ()
     /* 设置像素 */
     s->set_framesize(s, FRAMESIZE_QVGA + 3);
 
-//    printf("file:%s, line:%d, begin get_camera_data_task, time = %ld\r\n", __FILE__, __LINE__, time(NULL));
-    /* add by liuwenjian 2020-3-4 begin */
+    /* sem create */
+    vq_save_trigger = xSemaphoreCreateCounting(1, 0);
+    if(NULL == vq_save_trigger) {
+        ESP_LOGE(TAG, "vq_save_trigger");
+        return ESP_FAIL;
+    }
+    vq_upload_trigger = xSemaphoreCreateCounting(1, 0);
+    if(NULL == vq_upload_trigger) {
+        ESP_LOGE(TAG, "vq_upload_trigger");
+        return ESP_FAIL;
+    }
+    start_capture_trigger = xSemaphoreCreateCounting(1, 0);
+    if(NULL == start_capture_trigger) {
+        ESP_LOGE(TAG, "start_capture_trigger");
+        return ESP_FAIL;
+    }
+    save_pic_completed = xSemaphoreCreateCounting(1, 0);
+    if(NULL == save_pic_completed) {
+        ESP_LOGE(TAG, "save_pic_completed");
+        return ESP_FAIL;
+    }
     /* 创建任务摄像头开始录制 */
-    xTaskCreate(&get_camera_data_task, "get_camera_data_task", 4096, NULL, 4, &get_camera_data_task_handle);
+    xTaskCreate(&camera_capture_task, "camera_capture_task", 4096, NULL, 4, &get_camera_data_task_handle);
 //    printf("file:%s, line:%d, begin recv_data_task\r\n", __FILE__, __LINE__);
 //    xTaskCreate(&recv_data_task, "recv_data_task", 8192, NULL, 5, NULL);
     /* 创建任务发送图片 */
@@ -764,5 +764,6 @@ void app_camera_main ()
 //    stream_send();
 //    fb = esp_camera_fb_get();
 //    printf("file:%s, line:%d, fb = %p\r\n", __FILE__, __LINE__, fb);
+    return ESP_OK;
 }
 
