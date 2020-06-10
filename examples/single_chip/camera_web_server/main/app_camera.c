@@ -64,6 +64,9 @@ pic_queue *upload_pic_pointer;
 /* mutex of video-queue */
 xSemaphoreHandle vq_mtx;
 
+uint32_t send_video_start_time;
+
+
 static int send_jpeg(pic_queue *send_pic, time_t argtime)
 {
     my_MD5_CTX md5;
@@ -549,6 +552,14 @@ static void send_queue_pic_task(void *pvParameter)
                         memcpy(send_pic->pic_info, upload_pic_pointer->pic_info, upload_pic_pointer->pic_len);
                     }
                     time_t argtime = v->time;
+
+                    /* 发送时间控制 */
+                    if(upload_pic_pointer == v->head_pic) {
+                        portENTER_CRITICAL(&time_var_spinlock);
+                        send_video_start_time = xTaskGetTickCount();
+                        portEXIT_CRITICAL(&time_var_spinlock);
+                    }
+                    
                     unlock_vq();
                     send_jpeg(send_pic, argtime);
                     lock_vq();
@@ -557,6 +568,9 @@ static void send_queue_pic_task(void *pvParameter)
                     unlock_vq();
                     send_jpeg(NULL, 0);
                     lock_vq();
+                    portENTER_CRITICAL(&time_var_spinlock);
+                    send_video_start_time = 0;
+                    portEXIT_CRITICAL(&time_var_spinlock);
                     drop_video(upload_pic_pointer->video);
                 }
             } else {
@@ -608,9 +622,9 @@ static void send_queue_pic_task(void *pvParameter)
             portENTER_CRITICAL(&g_pic_send_over_spinlock);
             g_pic_send_over = TRUE;
             portEXIT_CRITICAL(&g_pic_send_over_spinlock);
-            portENTER_CRITICAL(&max_sleep_uptime_spinlock);
+            portENTER_CRITICAL(&time_var_spinlock);
             bool b = max_sleep_uptime == DEF_MAX_SLEEP_TIME;
-            portEXIT_CRITICAL(&max_sleep_uptime_spinlock);
+            portEXIT_CRITICAL(&time_var_spinlock);
             if( b ) {
                 sdcard_log_write();
                 printf("=-> send shutdown request\n");

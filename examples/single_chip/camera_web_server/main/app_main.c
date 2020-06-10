@@ -66,6 +66,9 @@
 /* 无人时低电平持续时间 */
 #define MIN_NO_PEOPLE_LOW_LEVEL_TIME_SECS    3
 
+/* 最长单个视频发送时间 */
+#define MAX_SINGLE_VIDEO_SEND_TIME_SECS   60
+
 
 static const char *TAG = "main";
 static const char *SEMTAG = "semaphore";
@@ -79,8 +82,9 @@ xSemaphoreHandle g_update_over;
 xSemaphoreHandle g_data_mutex;
 init_info g_init_data;
 
-portMUX_TYPE max_sleep_uptime_spinlock = portMUX_INITIALIZER_UNLOCKED;
+portMUX_TYPE time_var_spinlock = portMUX_INITIALIZER_UNLOCKED;
 int max_sleep_uptime = DEF_MAX_SLEEP_TIME;
+bool ble_config_mode = false;
 
 xSemaphoreHandle vpercent_ready;
 bool rtc_set_magic_match, wake_up_flag;
@@ -396,9 +400,9 @@ static void echo_task(void *arg)
         if( xTaskGetTickCount() >= sec2tick(10)) {
             static bool oneTime = false;
             /* 未连接，无用户设置，只执行一次 */
-            portENTER_CRITICAL(&max_sleep_uptime_spinlock);
-            bool b = max_sleep_uptime==DEF_MAX_SLEEP_TIME;
-            portEXIT_CRITICAL(&max_sleep_uptime_spinlock);
+            portENTER_CRITICAL(&time_var_spinlock);
+            bool b = (ble_config_mode == false);
+            portEXIT_CRITICAL(&time_var_spinlock);
             portENTER_CRITICAL(&is_connect_server_spinlock);
             bool b1 = false == is_connect_server;
             portEXIT_CRITICAL(&is_connect_server_spinlock);
@@ -440,12 +444,15 @@ static void echo_task(void *arg)
             printf("=> rising edge\n");
             cam_edge_handler(1);
         }
+#if  0
         else if( strstr(data, KEY_WKUP_PIN_RISING) ) {
             printf("=> user key\n");
-            portENTER_CRITICAL(&max_sleep_uptime_spinlock);
-            max_sleep_uptime = DEF_MAX_SLEEP_TIME+60;
-            portEXIT_CRITICAL(&max_sleep_uptime_spinlock);
+            portENTER_CRITICAL(&time_var_spinlock);
+            //ble_config_mode = true;
+            max_sleep_uptime = BLE_CONFIG_MAX_SLEEP_TIME;
+            portEXIT_CRITICAL(&time_var_spinlock);
         }
+#endif
         else if(strstr(data, REC_STATUS)) {
             /* key/ir */
             if( 'k' == data[strlen(REC_STATUS)] ) {
@@ -470,9 +477,10 @@ static void echo_task(void *arg)
                 gatts_init();
                 log_enum(LOG_CONFIGURATION);
 
-                portENTER_CRITICAL(&max_sleep_uptime_spinlock);
-                max_sleep_uptime = DEF_MAX_SLEEP_TIME+60;
-                portEXIT_CRITICAL(&max_sleep_uptime_spinlock);
+                portENTER_CRITICAL(&time_var_spinlock);
+                ble_config_mode = true;
+                max_sleep_uptime = BLE_CONFIG_MAX_SLEEP_TIME;
+                portEXIT_CRITICAL(&time_var_spinlock);
             } else {
                 printf("STATUS: ir\n");
             }
@@ -644,30 +652,65 @@ void app_main()
     xTaskCreate(echo_task, "uart_echo_task", 3072, NULL, 20, NULL);
     xTaskCreate(save_video_into_sdcard_task, "save_video", 2048, NULL, 10, NULL);
 
-    /* 等待摄像图片传送结束 */
+    int no_video_cnter = 0;
+    /* 等待超时 */
     while (true)
     {
-        portENTER_CRITICAL(&max_sleep_uptime_spinlock);
-        bool b = count < max_sleep_uptime;
-        portEXIT_CRITICAL(&max_sleep_uptime_spinlock);
-        if(b) {
+        portENTER_CRITICAL(&time_var_spinlock);
+        bool timeout = count > max_sleep_uptime;
+        bool is_ble_config = ble_config_mode;
+        uint32_t send_v_start_time = send_video_start_time;
+        portEXIT_CRITICAL(&time_var_spinlock);
+
+        /* 发送超时 */
+        if(send_v_start_time&&(xTaskGetTickCount() - send_v_start_time > sec2tick(MAX_SINGLE_VIDEO_SEND_TIME_SECS))) {
+            ESP_LOGI(TAG, "send timeout: %d", MAX_SINGLE_VIDEO_SEND_TIME_SECS);
+            log_printf("发送超时(%d s)", MAX_SINGLE_VIDEO_SEND_TIME_SECS);
+            break;
+        }
+
+        /* 没有新触发一段时间 */
+        lock_vq();
+        void *vq = vq_head;
+        unlock_vq();
+        if(NULL == vq) {
+            no_video_cnter++;
+            const int timeout_in_sec = 3;
+            if(no_video_cnter > timeout_in_sec) {
+                ESP_LOGI(TAG, "no new video in %d seconds", timeout_in_sec);
+                log_printf("没有新的拍摄: %d秒", timeout_in_sec);
+                break;
+            }
+        } else {
+            no_video_cnter = 0;
+        }
+
+        /* 配置超时时间 */
+        if(!is_ble_config) {
             count++;
             vTaskDelay(1000 / portTICK_PERIOD_MS);
+            continue;
         } else {
-            break;
+            if(timeout) {
+                /* 到达最长配置时间 */
+                log_printf("蓝牙配置结束");
+                break;
+            } else {
+                count++;
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
+            }
         }
     }
     /* exceed max uptime, timeout */
 
-    portENTER_CRITICAL(&max_sleep_uptime_spinlock);
-    int runtime = max_sleep_uptime;
-    portEXIT_CRITICAL(&max_sleep_uptime_spinlock);
-
-    ESP_LOGI(TAG, "run timed out(%d s)", runtime);
-    log_printf("运行超时 (%d 秒)", runtime);
+    //portENTER_CRITICAL(&time_var_spinlock);
+    //int runtime = max_sleep_uptime;
+    //portEXIT_CRITICAL(&time_var_spinlock);
+    //ESP_LOGI(TAG, "run timed out(%d s)", runtime);
+    //log_printf("运行超时 (%d 秒)", runtime);
     /*----------write log-----------*/
     sdcard_log_write();
-    printf("=-> send shutdown request\n");
+    printf("=-> timed out, send shutdown request\n");
     uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
 
 #if  0

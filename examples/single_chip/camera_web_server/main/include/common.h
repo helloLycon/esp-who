@@ -20,6 +20,7 @@
 
 #define DBG_NO_SLEEP_MODE  0
 #define DEF_MAX_SLEEP_TIME  600000
+#define BLE_CONFIG_MAX_SLEEP_TIME  120
 
 #define APP_PACKET_DATA_LEN  (1024*20)
 
@@ -97,7 +98,7 @@ struct cam_ctrl_block {
 extern unsigned char g_pic_send_over;
 extern xSemaphoreHandle g_update_over;
 extern init_info g_init_data;
-extern portMUX_TYPE max_sleep_uptime_spinlock;
+extern portMUX_TYPE time_var_spinlock;
 extern portMUX_TYPE g_pic_send_over_spinlock;
 extern portMUX_TYPE cam_ctrl_spinlock;
 extern bool wake_up_flag;
@@ -111,6 +112,7 @@ extern TaskHandle_t get_camera_data_task_handle;
 extern TaskHandle_t send_queue_pic_task_handle;
 extern TaskHandle_t simple_ota_example_task_handle;
 extern struct cam_ctrl_block cam_ctrl;
+extern uint32_t send_video_start_time;
 
 void upgrade_block(void) ;
 int led_gpio_init(void);

@@ -135,6 +135,9 @@ void drop_video(video_queue *v)  {
         }
     }
     if(v == upload_pic_pointer->video) {
+        portENTER_CRITICAL(&time_var_spinlock);
+        send_video_start_time = 0;
+        portEXIT_CRITICAL(&time_var_spinlock);
         /* 尝试下个视频 */
         video_queue *video = upload_pic_pointer->video;
         if(video->next && video->next->head_pic) {
