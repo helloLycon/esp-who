@@ -154,6 +154,9 @@ extern "C" {
 
 int app_camera_main();
 int cam_power_down(void);
+void camera_start_capture(void) ;
+void camera_finish_capture(void);
+void camera_drop_capture(void);
 
 extern bool is_connect_server;
 extern portMUX_TYPE is_connect_server_spinlock;
@@ -165,7 +168,6 @@ extern pic_queue *upload_pic_pointer;
 
 extern pic_queue *g_pic_queue_head;
 
-extern bool capture_halt;
 
 #ifdef __cplusplus
 }

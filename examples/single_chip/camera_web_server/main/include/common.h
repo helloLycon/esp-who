@@ -14,10 +14,12 @@
 #define CAMERA_STOP         "airbat\tpass\r\n"
 #define STORAGE_NAMESPACE   "storage"
 
+#define sec2tick(x)  ((x)*configTICK_RATE_HZ)
+
 #define ECHO_UART_NUM   (UART_NUM_0)
 
 #define DBG_NO_SLEEP_MODE  0
-#define DEF_MAX_SLEEP_TIME  60
+#define DEF_MAX_SLEEP_TIME  600000
 
 #define APP_PACKET_DATA_LEN  (1024*20)
 
@@ -42,7 +44,7 @@ extern xSemaphoreHandle vq_mtx;
 
 
 #define TCP_PORT            10086               //统一的端口号，包括TCP客户端或者服务端
-#define CAMERA_VIDEO_TIME   10
+#define MAX_CAMERA_VIDEO_TIME   10
 
 #define IR_VOL_UNSET      0
 #define LAST_BTRY_PERCENT_UNSET 0xffff
@@ -78,12 +80,26 @@ typedef struct init_info{
     time_t start_time;              /* 启动时间 */
 }init_info;
 
-extern bool g_camera_over;
+enum CamStatus {
+    CAM_IDLE = 0,
+    CAM_CAPTURE,
+};
+
+struct cam_ctrl_block {
+    bool first_capture_determined; //第一个视频是否已经被决断(valid/unvalid)
+    enum CamStatus status;
+    uint32_t start_ticks;
+    uint32_t last_rising_edge;
+    uint32_t prev_rising_edge;  //倒数第二个
+    uint32_t last_falling;
+};
+
 extern unsigned char g_pic_send_over;
 extern xSemaphoreHandle g_update_over;
 extern init_info g_init_data;
 extern portMUX_TYPE max_sleep_uptime_spinlock;
 extern portMUX_TYPE g_pic_send_over_spinlock;
+extern portMUX_TYPE cam_ctrl_spinlock;
 extern bool wake_up_flag;
 extern xSemaphoreHandle vpercent_ready;
 extern xSemaphoreHandle g_data_mutex;
@@ -94,6 +110,7 @@ extern int s_retry_num;
 extern TaskHandle_t get_camera_data_task_handle;
 extern TaskHandle_t send_queue_pic_task_handle;
 extern TaskHandle_t simple_ota_example_task_handle;
+extern struct cam_ctrl_block cam_ctrl;
 
 void upgrade_block(void) ;
 int led_gpio_init(void);

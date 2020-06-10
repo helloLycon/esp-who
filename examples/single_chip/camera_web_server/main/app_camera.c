@@ -60,7 +60,6 @@ xSemaphoreHandle vq_upload_trigger;
 xSemaphoreHandle start_capture_trigger;
 xSemaphoreHandle save_pic_completed;
 pic_queue *upload_pic_pointer;
-bool capture_halt = false;
 
 /* mutex of video-queue */
 xSemaphoreHandle vq_mtx;
@@ -342,7 +341,6 @@ void camera_finish_capture(void) {
 
 void camera_drop_capture(void) {
     lock_vq();
-    capture_halt = true;
     drop_video(vq_tail);
     unlock_vq();
 }
@@ -353,6 +351,9 @@ int camera_capture_one_video(void) {
     uint8_t *_jpg_buf = NULL;
 
     ESP_LOGI(TAG, "<---------CAPTURE VIDEO--------->");
+    portENTER_CRITICAL(&cam_ctrl_spinlock);
+    cam_ctrl.start_ticks = xTaskGetTickCount();
+    portEXIT_CRITICAL(&cam_ctrl_spinlock);
     new_video();
 
     for(;;) {
@@ -370,7 +371,10 @@ int camera_capture_one_video(void) {
 
             /* 结束拍摄 */
             lock_vq();
-            if(capture_halt || vq_tail->complete) {
+            portENTER_CRITICAL(&cam_ctrl_spinlock);
+            bool b_idle = (cam_ctrl.status == CAM_IDLE);
+            portEXIT_CRITICAL(&cam_ctrl_spinlock);
+            if(b_idle || vq_tail->complete) {
                 /* free framebuffer */
                 if (fb)
                 {
@@ -383,7 +387,6 @@ int camera_capture_one_video(void) {
                     free(_jpg_buf);
                     _jpg_buf = NULL;
                 }
-                capture_halt = false;
                 unlock_vq();
                 return ESP_OK;
             }
@@ -766,7 +769,8 @@ int app_camera_main ()
         ESP_LOGE(TAG, "vq_upload_trigger");
         return ESP_FAIL;
     }
-    start_capture_trigger = xSemaphoreCreateCounting(1, 0);
+    /* 上电拍摄，后续需要触发 */
+    start_capture_trigger = xSemaphoreCreateCounting(1, 1);
     if(NULL == start_capture_trigger) {
         ESP_LOGE(TAG, "start_capture_trigger");
         return ESP_FAIL;

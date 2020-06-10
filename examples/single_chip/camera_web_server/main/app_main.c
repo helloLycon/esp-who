@@ -54,9 +54,21 @@
 #define ECHO_TEST_CTS   (UART_PIN_NO_CHANGE)
 #define BUF_SIZE        (256)
 
+/*-------------------------- 触发参数配置 --------------------------*/
+#define MAX_CAMERA_VIDEO_TIME_SECS     10
+
+/* 多次触发时上升沿时间间隔需要在这个时间内 */
+#define MIN_INTERVAL_OF_MULTI_CAPTURE_TICKS  (1000/*ms*//portTICK_PERIOD_MS)
+
+/* 第一个视频需要的第三个上升沿，要在t1时间内来到，否则丢弃视频 */
+#define MAX_RISING_EDGE_TIME_OF_FIRST_VALID_VIDEO_TICKS  (3000/*ms*//portTICK_PERIOD_MS) 
+
+/* 无人时低电平持续时间 */
+#define MIN_NO_PEOPLE_LOW_LEVEL_TIME_SECS    3
+
+
 static const char *TAG = "main";
 static const char *SEMTAG = "semaphore";
-bool g_camera_over = false;
 bool g_update_mcu = false;
 
 portMUX_TYPE g_pic_send_over_spinlock = portMUX_INITIALIZER_UNLOCKED;
@@ -72,6 +84,12 @@ int max_sleep_uptime = DEF_MAX_SLEEP_TIME;
 
 xSemaphoreHandle vpercent_ready;
 bool rtc_set_magic_match, wake_up_flag;
+
+portMUX_TYPE cam_ctrl_spinlock = portMUX_INITIALIZER_UNLOCKED;
+struct cam_ctrl_block cam_ctrl = {
+    .status = CAM_CAPTURE,
+    .first_capture_determined = false,
+};
 
 int semaphoreInit(void) {
     g_update_over = xSemaphoreCreateCounting(100, 0);
@@ -262,10 +280,95 @@ void init_para(bool erase_all)
     return ;
 }
 
+void cam_status_enter_idle(void) {
+    portENTER_CRITICAL(&cam_ctrl_spinlock);
+    memset(&cam_ctrl, 0, sizeof(cam_ctrl));
+    cam_ctrl.status = CAM_IDLE;
+    cam_ctrl.first_capture_determined = true;
+    portEXIT_CRITICAL(&cam_ctrl_spinlock);
+}
+
+int cam_status_handler(void) {
+    portENTER_CRITICAL(&cam_ctrl_spinlock);
+    enum CamStatus status = cam_ctrl.status;
+    portEXIT_CRITICAL(&cam_ctrl_spinlock);
+    switch(status) {
+#if  0
+        case CAM_IDLE:
+            if((cam_ctrl.last_rising_edge - cam_ctrl.prev_rising_edge)<MIN_INTERVAL_OF_MULTI_CAPTURE ) {
+                camera_start_capture();
+            }
+            break;
+#endif
+        case CAM_CAPTURE:
+            /* 没人了，持续低电平 */
+            if(cam_ctrl.last_falling && ( xTaskGetTickCount()-cam_ctrl.last_falling > sec2tick(MIN_NO_PEOPLE_LOW_LEVEL_TIME_SECS))) {
+                printf("%d => falling edge time out\n", xTaskGetTickCount());
+                log_enum(LOG_CAMERA_OVER);
+
+                portENTER_CRITICAL(&cam_ctrl_spinlock);
+                bool b_start_ticks = !!cam_ctrl.start_ticks;
+                portEXIT_CRITICAL(&cam_ctrl_spinlock);
+                if(b_start_ticks) {
+                    /* 已经开始拍摄 */
+                    camera_finish_capture();
+                }
+                cam_status_enter_idle();
+                break;
+            }
+            /* 最长拍摄时长 */
+            portENTER_CRITICAL(&cam_ctrl_spinlock);
+            bool b_start_ticks = !!cam_ctrl.start_ticks;
+            portEXIT_CRITICAL(&cam_ctrl_spinlock);
+            if(b_start_ticks &&(xTaskGetTickCount()-cam_ctrl.start_ticks > sec2tick(MAX_CAMERA_VIDEO_TIME_SECS))) {
+                camera_finish_capture();
+                cam_status_enter_idle();
+                break;
+            }
+            /* 判断第一次拍摄一定时间内是否有上升沿到来 */
+            if(cam_ctrl.first_capture_determined==false && xTaskGetTickCount()>MAX_RISING_EDGE_TIME_OF_FIRST_VALID_VIDEO_TICKS) {
+                camera_drop_capture();
+                cam_status_enter_idle();
+                break;
+            }
+            break;
+        default:
+            break;
+    }
+    return 0;
+}
+
+int cam_edge_handler(bool rising) {
+    if(rising) {
+        cam_ctrl.prev_rising_edge = cam_ctrl.last_rising_edge;
+        cam_ctrl.last_rising_edge = xTaskGetTickCount();
+
+        portENTER_CRITICAL(&cam_ctrl_spinlock);
+        enum CamStatus status = cam_ctrl.status;
+        portEXIT_CRITICAL(&cam_ctrl_spinlock);
+        if(cam_ctrl.first_capture_determined == false && CAM_CAPTURE == status && xTaskGetTickCount()<MAX_RISING_EDGE_TIME_OF_FIRST_VALID_VIDEO_TICKS) {
+            /* valid video, do nothing */
+            cam_ctrl.first_capture_determined = true;
+        } else if(CAM_IDLE == status) {
+            if(!cam_ctrl.prev_rising_edge) {
+                return 0;
+            }
+            if((cam_ctrl.last_rising_edge - cam_ctrl.prev_rising_edge)<MIN_INTERVAL_OF_MULTI_CAPTURE_TICKS ) {
+                camera_start_capture();
+                portENTER_CRITICAL(&cam_ctrl_spinlock);
+                cam_ctrl.status = CAM_CAPTURE;
+                portEXIT_CRITICAL(&cam_ctrl_spinlock);
+            }
+        }
+    } else {
+        cam_ctrl.last_falling = xTaskGetTickCount();
+    }
+    return 0;
+}
+
 static void echo_task(void *arg)
 {
     extern unsigned char is_connect;
-    TickType_t fallingTickCount = 0;
     /* Configure parameters of an UART driver,
      * communication pins and install the driver */
     uart_config_t uart_config = {
@@ -289,14 +392,8 @@ static void echo_task(void *arg)
         // Read data from the UART
         int len = uart_read_bytes(ECHO_UART_NUM, (uint8_t *)data, BUF_SIZE, 20 / portTICK_RATE_MS);
 
-        /* 观察是否超时(无人) */
-        if( g_camera_over!=true && fallingTickCount && ( (xTaskGetTickCount() - fallingTickCount) > (3*configTICK_RATE_HZ))) {
-            printf("%d => falling edge time out\n", xTaskGetTickCount());
-            g_camera_over = true;
-            log_enum(LOG_CAMERA_OVER);
-        }
         /* 检查wifi连接 */
-        if( xTaskGetTickCount() >= (10*configTICK_RATE_HZ)) {
+        if( xTaskGetTickCount() >= sec2tick(10)) {
             static bool oneTime = false;
             /* 未连接，无用户设置，只执行一次 */
             portENTER_CRITICAL(&max_sleep_uptime_spinlock);
@@ -330,15 +427,18 @@ static void echo_task(void *arg)
             esp_deep_sleep_start();
         }
         else if( strstr(data, IR_WKUP_PIN_FALLING) ) {
-            /* 上次是下降沿的话不用更新 */
+            /*
+            // 上次是下降沿的话不用更新
             if( 0 == fallingTickCount) {
                 fallingTickCount = xTaskGetTickCount();
-            }
+            }*/
             printf("=> falling edge\n");
+            cam_edge_handler(0);
         }
         else if( strstr(data, IR_WKUP_PIN_RISING) ) {
-            fallingTickCount = 0;
+            //fallingTickCount = 0;
             printf("=> rising edge\n");
+            cam_edge_handler(1);
         }
         else if( strstr(data, KEY_WKUP_PIN_RISING) ) {
             printf("=> user key\n");
@@ -383,8 +483,8 @@ static void echo_task(void *arg)
             } else {
                 printf("STATUS: ir-low\n");
                 /* 上次是下降沿的话不用更新 */
-                if( 0 == fallingTickCount) {
-                    fallingTickCount = xTaskGetTickCount();
+                if( 0 == cam_ctrl.last_falling) {
+                    cam_ctrl.last_falling = xTaskGetTickCount();
                 }
                 printf("=> ir low level(act as falling edge)\n");
             }
