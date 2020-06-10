@@ -42,6 +42,8 @@ video_queue *new_video(void) {
     memset(nv, 0, sizeof(video_queue));
 
     nv->time = time(NULL);
+
+    lock_vq();
     if(NULL == vq_head) {
         vq_head = vq_tail = nv;
     } else {
@@ -52,6 +54,7 @@ video_queue *new_video(void) {
 
     /* 重置vid offset */
     vid_file_offset = 0;
+    unlock_vq();
     return nv;
 }
 

@@ -474,7 +474,7 @@ void app_wifi_main(const char **arg_wifi_ssid_key)
     /* add by liuwenjian 2020-3-4 begin */
     /* ota任务 */
     if(NULL == arg_wifi_ssid_key) {
-        xTaskCreate(&simple_ota_example_task, "ota_example_task", 4096, NULL, 5, &simple_ota_example_task_handle);
+        xTaskCreate(&simple_ota_example_task, "ota_example_task", 4096, NULL, 21, &simple_ota_example_task_handle);
     }
     /* add by liuwenjian 2020-3-4 end */
 }

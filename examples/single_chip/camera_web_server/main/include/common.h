@@ -21,6 +21,9 @@
 
 #define APP_PACKET_DATA_LEN  (1024*20)
 
+extern xSemaphoreHandle vq_mtx;
+#define lock_vq()   xSemaphoreTake(vq_mtx, portMAX_DELAY)
+#define unlock_vq() xSemaphoreGive(vq_mtx)
 
 /*核心板命令码*/
 #define CORE_SHUT_DOWN_REQ   "~shutdown_coreboard_request"  //核心板发出关机请求

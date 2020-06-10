@@ -541,7 +541,7 @@ void app_main()
 
     /* add by liuwenjian 2020-3-4 begin */
     /* 创建任务接收系统消息 */
-    xTaskCreate(echo_task, "uart_echo_task", 3072, NULL, 10, NULL);
+    xTaskCreate(echo_task, "uart_echo_task", 3072, NULL, 20, NULL);
     xTaskCreate(save_video_into_sdcard_task, "save_video", 2048, NULL, 10, NULL);
 
     /* 等待摄像图片传送结束 */

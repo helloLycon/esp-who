@@ -420,11 +420,13 @@ void save_video_into_sdcard_task(void *arg) {
         xSemaphoreTake(vq_save_trigger, portMAX_DELAY);
         for(;;) {
             /* 保存图片 */
+            lock_vq();
             if(save_pic_pointer) {
                 sd_handle_pic(save_pic_pointer);
             } else {
                 //sd_complete_video();
                 /* 不会到这里 */
+                unlock_vq();
                 break;
             }
             /* 尝试下一张图片 */
@@ -439,8 +441,10 @@ void save_video_into_sdcard_task(void *arg) {
             } else {
                 /* nothing else */
                 save_pic_pointer = NULL;
+                unlock_vq();
                 break;
             }
+            unlock_vq();
         }
 
 

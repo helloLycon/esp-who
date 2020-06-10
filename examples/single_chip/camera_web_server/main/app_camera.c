@@ -60,12 +60,12 @@ xSemaphoreHandle vq_upload_trigger;
 xSemaphoreHandle start_capture_trigger;
 xSemaphoreHandle save_pic_completed;
 pic_queue *upload_pic_pointer;
-
-pic_queue *g_pic_queue_head;
-
 bool capture_halt = false;
 
-static int send_jpeg(pic_queue *send_pic)
+/* mutex of video-queue */
+xSemaphoreHandle vq_mtx;
+
+static int send_jpeg(pic_queue *send_pic, time_t argtime)
 {
     my_MD5_CTX md5;
     int i;
@@ -91,7 +91,7 @@ static int send_jpeg(pic_queue *send_pic)
     if (socket_fd < 0)
     {
         sock_ret = create_tcp_client();
-        printf("file:%s, line:%d, sock_ret = %d\r\n", __FILE__, __LINE__, sock_ret);
+        ESP_LOGE(TAG, "file:%s, line:%d, sock_ret = %d\r\n", __FILE__, __LINE__, sock_ret);
     }
 
     if (ESP_OK == sock_ret)
@@ -99,14 +99,6 @@ static int send_jpeg(pic_queue *send_pic)
 //        gettimeofday(&start_tv, NULL);
         if (NULL != send_pic)
         {
-            /*------------------判断mem/sdcard-------------------*/
-            video_queue *v = send_pic->video;
-            if(v->is_in_sdcard) {
-                sd_pic = malloc(PIC_DATA_OFFSET + send_pic->pic_len);
-                memcpy(sd_pic, send_pic, sizeof(pic_queue));
-                read_one_pic_from_sdcard(sd_pic);
-                send_pic = sd_pic;
-            }
             // init md5
             my_MD5Init(&md5);
             
@@ -116,9 +108,9 @@ static int send_jpeg(pic_queue *send_pic)
                 {
                     my_MD5Update(&md5, (send_pic->pic_info + send_len), APP_PACKET_DATA_LEN);
                     jpeg_data.buf = send_pic->pic_info + send_len;
-                    v = send_pic->video;
+                    //v = send_pic->video;
                     //jpeg_data.create_time = send_pic->cur_time;
-                    jpeg_data.create_time = v->time;
+                    jpeg_data.create_time = argtime;
                     jpeg_data.num = sn;
                     jpeg_data.send_count = send_len;
                     packet_send_data.data = (void *)(&jpeg_data);
@@ -155,9 +147,9 @@ static int send_jpeg(pic_queue *send_pic)
                 {
                     my_MD5Update(&md5, (send_pic->pic_info + send_len), (send_pic->pic_len - send_len));
                     jpeg_data.buf = send_pic->pic_info + send_len;
-                    v = send_pic->video;
+                    //v = send_pic->video;
                     //jpeg_data.create_time = send_pic->cur_time;
-                    jpeg_data.create_time = v->time;
+                    jpeg_data.create_time = argtime;
                     jpeg_data.num = sn;
                     jpeg_data.send_count = send_len;
                     packet_send_data.data = (void *)(&jpeg_data);
@@ -201,9 +193,9 @@ static int send_jpeg(pic_queue *send_pic)
             
     //        packet_send_data.buf = buf + send_len;
             jpeg_data.buf = (unsigned char *)md5_str;
-            v = send_pic->video;
+            //v = send_pic->video;
             //jpeg_data.create_time = send_pic->cur_time;
-            jpeg_data.create_time = v->time;
+            jpeg_data.create_time = argtime;
             jpeg_data.num = sn;
             sn++;
             jpeg_data.send_count = send_len;
@@ -333,6 +325,7 @@ void camera_start_capture(void) {
 }
 
 void camera_finish_capture(void) {
+    lock_vq();
     vq_tail->complete = true;
     /* 伪图片，代表视频结束 */
     pic_in_queue(vq_tail, 0, NULL);
@@ -342,13 +335,16 @@ void camera_finish_capture(void) {
     if(NULL == save_pic_pointer) {
         save_pic_pointer = vq_tail->tail_pic;
     }
+    unlock_vq();
     xSemaphoreGive(vq_save_trigger);
     xSemaphoreGive(vq_upload_trigger);
 }
 
 void camera_drop_capture(void) {
+    lock_vq();
     capture_halt = true;
     drop_video(vq_tail);
+    unlock_vq();
 }
 
 int camera_capture_one_video(void) {
@@ -373,6 +369,7 @@ int camera_capture_one_video(void) {
             _jpg_buf = fb->buf;
 
             /* 结束拍摄 */
+            lock_vq();
             if(capture_halt || vq_tail->complete) {
                 /* free framebuffer */
                 if (fb)
@@ -387,6 +384,7 @@ int camera_capture_one_video(void) {
                     _jpg_buf = NULL;
                 }
                 capture_halt = false;
+                unlock_vq();
                 return ESP_OK;
             }
             /* 图片入队列 */
@@ -399,6 +397,7 @@ int camera_capture_one_video(void) {
             if(NULL == save_pic_pointer) {
                 save_pic_pointer = vq_tail->tail_pic;
             }
+            unlock_vq();
             
             xSemaphoreGive(vq_save_trigger);
             xSemaphoreGive(vq_upload_trigger);
@@ -447,7 +446,11 @@ static void camera_capture_task(void *arg)
         /* wait */
         xSemaphoreTake(start_capture_trigger, portMAX_DELAY);
         while(true) {
-            if (vq_tail && false == vq_tail->is_in_sdcard) {
+            lock_vq();
+            bool bv = (vq_tail && false == vq_tail->is_in_sdcard);
+            unlock_vq();
+
+            if (bv) {
                 /* 内存里还有数据 */
                 xSemaphoreTake(save_pic_completed, portMAX_DELAY);
             } else {
@@ -513,6 +516,7 @@ static void send_queue_pic_task(void *pvParameter)
     extern int max_sleep_uptime;
     extern unsigned char is_connect;
     uint8_t reg[8];
+    pic_queue *send_pic;
     printf("file:%s, line:%d, begin esp_wait_sntp_sync\r\n", __FILE__, __LINE__);
 
     /* 用于时间同步 */
@@ -529,16 +533,32 @@ static void send_queue_pic_task(void *pvParameter)
     for(;;) {
         xSemaphoreTake(vq_upload_trigger, portMAX_DELAY);
         for(;;) {
+            lock_vq();
             if(upload_pic_pointer) {
                 if(upload_pic_pointer->pic_len) {
-                    send_jpeg(upload_pic_pointer);
+                    /*------------------判断mem/sdcard-------------------*/
+                    video_queue *v = upload_pic_pointer->video;
+                    send_pic = (pic_queue *)malloc(PIC_DATA_OFFSET + upload_pic_pointer->pic_len);
+                    memcpy(send_pic, upload_pic_pointer, sizeof(pic_queue));
+                    if(v->is_in_sdcard) {
+                        read_one_pic_from_sdcard(send_pic);
+                    } else {
+                        memcpy(send_pic->pic_info, upload_pic_pointer->pic_info, upload_pic_pointer->pic_len);
+                    }
+                    time_t argtime = v->time;
+                    unlock_vq();
+                    send_jpeg(send_pic, argtime);
+                    lock_vq();
                 } else {
                     /* last pseudo pic */
-                    send_jpeg(NULL);
+                    unlock_vq();
+                    send_jpeg(NULL, 0);
+                    lock_vq();
                     drop_video(upload_pic_pointer->video);
                 }
             } else {
                 /* ? */
+                unlock_vq();
                 break;
             }
 
@@ -553,8 +573,11 @@ static void send_queue_pic_task(void *pvParameter)
             } else {
                 /* nothing else */
                 upload_pic_pointer = NULL;
+                unlock_vq();
                 break;
             }
+
+            unlock_vq();
         }
     }
 
@@ -751,6 +774,11 @@ int app_camera_main ()
     save_pic_completed = xSemaphoreCreateCounting(1, 0);
     if(NULL == save_pic_completed) {
         ESP_LOGE(TAG, "save_pic_completed");
+        return ESP_FAIL;
+    }
+    vq_mtx = xSemaphoreCreateMutex();
+    if(NULL == vq_mtx) {
+        ESP_LOGE(TAG, "vq_mtx");
         return ESP_FAIL;
     }
     /* 创建任务摄像头开始录制 */
