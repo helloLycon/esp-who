@@ -322,11 +322,12 @@ int cam_power_down(void) {
 }
 
 void camera_start_capture(void) {
-    ESP_LOGI(TAG, "sem give start_capture_trigger");
+    printf("++++++++++++++++ (%s)\n", __func__);
     xSemaphoreGive(start_capture_trigger);
 }
 
 void camera_finish_capture(void) {
+    printf("++++++++++++++++ (%s)\n", __func__);
     lock_vq();
     vq_tail->complete = true;
     /* 伪图片，代表视频结束 */
@@ -338,11 +339,12 @@ void camera_finish_capture(void) {
         save_pic_pointer = vq_tail->tail_pic;
     }
     unlock_vq();
-    xSemaphoreGive(vq_save_trigger);
     xSemaphoreGive(vq_upload_trigger);
+    xSemaphoreGive(vq_save_trigger);
 }
 
 void camera_drop_capture(void) {
+    printf("++++++++++++++++ (%s)\n", __func__);
     lock_vq();
     drop_video(vq_tail);
     unlock_vq();
@@ -405,8 +407,8 @@ int camera_capture_one_video(void) {
             }
             unlock_vq();
             
-            xSemaphoreGive(vq_save_trigger);
             xSemaphoreGive(vq_upload_trigger);
+            xSemaphoreGive(vq_save_trigger);
 #if 0
             cur_time = xTaskGetTickCount();
             if ((cur_time - old_time > (CAMERA_VIDEO_TIME*configTICK_RATE_HZ) ) && (false == g_camera_over))
@@ -555,6 +557,7 @@ static void send_queue_pic_task(void *pvParameter)
 
                     /* 发送时间控制 */
                     if(upload_pic_pointer == v->head_pic) {
+                        printf("+++ head picture\n");
                         portENTER_CRITICAL(&time_var_spinlock);
                         send_video_start_time = xTaskGetTickCount();
                         portEXIT_CRITICAL(&time_var_spinlock);
@@ -564,6 +567,7 @@ static void send_queue_pic_task(void *pvParameter)
                     send_jpeg(send_pic, argtime);
                     lock_vq();
                 } else {
+                    printf("+++ last pseudo picture\n");
                     /* last pseudo pic */
                     unlock_vq();
                     send_jpeg(NULL, 0);

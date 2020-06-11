@@ -34,6 +34,7 @@ video_queue  *vq_tail = NULL;
 int vid_file_offset = 0;
 
 video_queue *new_video(void) {
+    printf("+++ (%s)\n", __func__);
     video_queue *nv = (video_queue *)malloc(sizeof(video_queue));
     if(NULL == nv) {
         ESP_LOGE(tag, "malloc in %s", __func__);
@@ -59,6 +60,7 @@ video_queue *new_video(void) {
 }
 
 void delete_time_video_in_sdcard(time_t t) {
+    printf("+++ (%s)\n", __func__);
     char fname[64];
     mk_sd_time_fname(t, fname);
     // Check if destination file exists before renaming
@@ -86,6 +88,7 @@ void drop_tail_video(void) {
 }*/
 
 void mv_video2sdcard(video_queue *v) {
+    printf("+++ (%s)\n", __func__);
     /* 已经在sdcard */
     if(v->is_in_sdcard)  {
         return;
@@ -120,20 +123,7 @@ void mv_video2sdcard(video_queue *v) {
 }
 
 void drop_video(video_queue *v)  {
-    if(v == save_pic_pointer->video) {
-        /* 尝试下个视频 */
-        video_queue *video = save_pic_pointer->video;
-        if(video->next && video->next->head_pic) {
-            /* new video */
-            save_pic_pointer = video->next->head_pic;
-            wr_sdcard_fp_open(true, video->next->time);
-            xSemaphoreGive(vq_save_trigger);
-        } else {
-            /* nothing else */
-            save_pic_pointer = NULL;
-            wr_sdcard_fp_close();
-        }
-    }
+    printf("+++ (%s)\n", __func__);
     if(v == upload_pic_pointer->video) {
         portENTER_CRITICAL(&time_var_spinlock);
         send_video_start_time = 0;
@@ -148,6 +138,20 @@ void drop_video(video_queue *v)  {
             /* nothing else */
             upload_pic_pointer = NULL;
             rd_sdcard_fp_close();
+        }
+    }
+    if(v == save_pic_pointer->video) {
+        /* 尝试下个视频 */
+        video_queue *video = save_pic_pointer->video;
+        if(video->next && video->next->head_pic) {
+            /* new video */
+            save_pic_pointer = video->next->head_pic;
+            wr_sdcard_fp_open(true, video->next->time);
+            xSemaphoreGive(vq_save_trigger);
+        } else {
+            /* nothing else */
+            save_pic_pointer = NULL;
+            wr_sdcard_fp_close();
         }
     }
 

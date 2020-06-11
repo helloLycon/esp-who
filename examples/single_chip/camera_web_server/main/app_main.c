@@ -285,6 +285,7 @@ void init_para(bool erase_all)
 }
 
 void cam_status_enter_idle(void) {
+    printf("+++ (%s)\n", __func__);
     portENTER_CRITICAL(&cam_ctrl_spinlock);
     memset(&cam_ctrl, 0, sizeof(cam_ctrl));
     cam_ctrl.status = CAM_IDLE;
@@ -436,12 +437,12 @@ static void echo_task(void *arg)
             if( 0 == fallingTickCount) {
                 fallingTickCount = xTaskGetTickCount();
             }*/
-            printf("=> falling edge\n");
+            printf("=> ↓\n");
             cam_edge_handler(0);
         }
         else if( strstr(data, IR_WKUP_PIN_RISING) ) {
             //fallingTickCount = 0;
-            printf("=> rising edge\n");
+            printf("=> ↑\n");
             cam_edge_handler(1);
         }
 #if  0
@@ -567,10 +568,11 @@ int led_gpio_init(void) {
     return 0;
 }
 
-const char *mk_win_time_str(const time_t t,char *str) {
-    struct tm tmv;
-    localtime_r(&t, &tmv);
-    sprintf(str, "%d-%d-%d_%d-%02d-%02d", tmv.tm_year+1900, tmv.tm_mon+1, tmv.tm_mday, tmv.tm_hour,tmv.tm_min,tmv.tm_sec);
+const char *mk_time_hex_id(const time_t t,char *str) {
+    //struct tm tmv;
+    //localtime_r(&t, &tmv);
+    //sprintf(str, "f%d%d%d%d%02d%02d", tmv.tm_year+1900, tmv.tm_mon+1, tmv.tm_mday, tmv.tm_hour,tmv.tm_min,tmv.tm_sec);
+    sprintf(str, "%08x", (unsigned int)t);
     return str;
 }
 

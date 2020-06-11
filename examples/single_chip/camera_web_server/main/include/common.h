@@ -117,7 +117,7 @@ extern uint32_t send_video_start_time;
 void upgrade_block(void) ;
 int led_gpio_init(void);
 esp_err_t store_init_data(void);
-const char *mk_win_time_str(const time_t t,char *str);
+const char *mk_time_hex_id(const time_t t,char *str);
 
 
 #endif

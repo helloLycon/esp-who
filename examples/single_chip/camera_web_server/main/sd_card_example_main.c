@@ -27,7 +27,7 @@
 
 static const char *TAG = "sdcard";
 static const char *tag = "sdcard";
-static const char *filename = "/sdcard/log";
+static const char *filename = "/t/log";
 
 static char *logbuf;
 static const int logbuf_size = 1024;
@@ -84,7 +84,7 @@ esp_err_t sdcard_init(void)
     // Please check its source code and implement error recovery when developing
     // production applications.
     sdmmc_card_t* card;
-    esp_err_t ret = esp_vfs_fat_sdmmc_mount("/sdcard", &host, &slot_config, &mount_config, &card);
+    esp_err_t ret = esp_vfs_fat_sdmmc_mount("/t", &host, &slot_config, &mount_config, &card);
 
     if (ret != ESP_OK) {
         if (ret == ESP_FAIL) {
@@ -304,6 +304,8 @@ int wr_sdcard_fp_open(bool force_reinit, time_t t) {
     if(NULL == sdfp) {
         char tmp[64];
         //video_queue *v = pic->video;
+        //mk_sd_time_fname(t, tmp);
+        //printf("fname = %s\n", tmp);
         sdfp = fopen(mk_sd_time_fname(t, tmp), "w");
         if(NULL == sdfp) {
             ESP_LOGE(TAG, "fopen failed in %s", __func__);
@@ -350,17 +352,19 @@ void rd_sdcard_fp_close(void) {
 }
 
 const char *mk_sd_fname(const char *name, char *tmp) {
-    sprintf(tmp, "/sdcard/%s", name);
+    sprintf(tmp, "/t/%s", name);
+    //printf("fname = %s\n", tmp);
     return tmp;
 }
 
 const char *mk_sd_time_fname(time_t t, char *tmp) {
     char timestr[32];
-    mk_win_time_str(t, timestr);
+    mk_time_hex_id(t, timestr);
     return mk_sd_fname(timestr, tmp);
 }
 
 int read_one_pic_from_sdcard(pic_queue *pic) {
+    printf("+++ (%s)\n", __func__);
     video_queue *vid = pic->video;
     rd_sdcard_fp_open(false, vid->time);
     if(fseek(rd_sdfp, pic->offset, SEEK_SET)<0) {
@@ -375,6 +379,7 @@ int read_one_pic_from_sdcard(pic_queue *pic) {
 }
 
 int save_one_pic_into_sdcard(pic_queue *pic) {
+    printf("+++ (%s)\n", __func__);
     video_queue *video = pic->video;
     wr_sdcard_fp_open(false, video->time);
 
@@ -391,6 +396,7 @@ int save_one_pic_into_sdcard(pic_queue *pic) {
 }
 
 void sd_complete_video(void) {
+    printf("+++ (%s)\n", __func__);
     wr_sdcard_fp_close();
     mv_video2sdcard(vq_tail);
 }
