@@ -426,14 +426,14 @@ static void echo_task(void *arg)
         }
         //printf("len = %d\n", len);
         data[len] = '\0';
-        if( strstr(data, CORE_SHUT_DOWN) ) {
+        if( !strncmp(data, CORE_SHUT_DOWN, strlen(CORE_SHUT_DOWN)) ) {
             sdcard_log_write();
             printf("=> core shut down recvd, call esp_deep_sleep_start()\n");
             uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_OK, strlen(CORE_SHUT_DOWN_OK)+1);
             /* 进入深度休眠 */
             esp_deep_sleep_start();
         }
-        else if( strstr(data, IR_WKUP_PIN_FALLING) ) {
+        else if( !strncmp(data, IR_WKUP_PIN_FALLING, strlen(IR_WKUP_PIN_FALLING)) ) {
             /*
             // 上次是下降沿的话不用更新
             if( 0 == fallingTickCount) {
@@ -442,13 +442,13 @@ static void echo_task(void *arg)
             printf("[%d] ↓\n", xTaskGetTickCount());
             cam_edge_handler(0);
         }
-        else if( strstr(data, IR_WKUP_PIN_RISING) ) {
+        else if( !strncmp(data, IR_WKUP_PIN_RISING, strlen(IR_WKUP_PIN_RISING)) ) {
             //fallingTickCount = 0;
             printf("[%d] ↑\n", xTaskGetTickCount());
             cam_edge_handler(1);
         }
 #if  1    /* 模拟多次触发 */
-        else if( strstr(data, KEY_WKUP_PIN_RISING) ) {
+        else if( !strncmp(data, KEY_WKUP_PIN_RISING, strlen(KEY_WKUP_PIN_RISING)) ) {
             portENTER_CRITICAL(&cam_ctrl_spinlock);
             enum CamStatus status = cam_ctrl.status;
             portEXIT_CRITICAL(&cam_ctrl_spinlock);
@@ -460,7 +460,7 @@ static void echo_task(void *arg)
             }
         }
 #endif
-        else if(strstr(data, REC_STATUS)) {
+        else if(!strncmp(data, REC_STATUS, strlen(REC_STATUS))) {
             /* key/ir */
             if( 'k' == data[strlen(REC_STATUS)] ) {
                 /* key */
@@ -545,7 +545,7 @@ static void echo_task(void *arg)
             }
             xSemaphoreGive(vpercent_ready);
         }
-        else if(strstr(data, CAMERA_POWER_DOWN_OK)) {
+        else if(!strncmp(data, CAMERA_POWER_DOWN_OK, strlen(CAMERA_POWER_DOWN_OK))) {
             extern bool g_camera_power;
             g_camera_power = false;
             printf("camera power down OKAY\n");
