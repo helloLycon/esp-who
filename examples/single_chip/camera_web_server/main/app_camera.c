@@ -120,7 +120,7 @@ static int send_jpeg(pic_queue *send_pic, time_t argtime)
                     packet_send_data.type = SEND_FACE_PIC_CODE;
                     
     //                printf("file:%s, line:%d, begin send_data\r\n", __FILE__, __LINE__);
-                    printf("%d 发: sn = %d\n", xTaskGetTickCount(), jpeg_data.num);
+                    printf("%d 发~~ sn = %d\n", xTaskGetTickCount(), jpeg_data.num);
                     ret = send_data(packet_send_data, true);
                     if (CAMERA_OK != ret)
                     {
@@ -159,7 +159,7 @@ static int send_jpeg(pic_queue *send_pic, time_t argtime)
                     packet_send_data.type = SEND_FACE_PIC_CODE;
                     
     //                printf("file:%s, line:%d, begin send_data\r\n", __FILE__, __LINE__);
-                    printf("%d 发: sn = %d size=%d\n", xTaskGetTickCount(), jpeg_data.num, send_pic->pic_len);
+                    printf("%d 发~~ sn = %d size=%d\n", xTaskGetTickCount(), jpeg_data.num, send_pic->pic_len);
                     ret = send_data(packet_send_data, true);
                     if (CAMERA_OK != ret)
                     {
@@ -205,7 +205,7 @@ static int send_jpeg(pic_queue *send_pic, time_t argtime)
             packet_send_data.type = SEND_FACE_PIC_CODE;
 
     //        printf("file:%s, line:%d, md5_str = %s\r\n", __FILE__, __LINE__, md5_str);
-            printf("%d 发: md5 = %s\n", xTaskGetTickCount(), md5_str);
+            printf("%d 发~~ md5 = %s\n", xTaskGetTickCount(), md5_str);
             ret = send_data(packet_send_data, true);
             if (CAMERA_OK != ret)
             {
@@ -576,7 +576,10 @@ static void send_queue_pic_task(void *pvParameter)
                     portENTER_CRITICAL(&time_var_spinlock);
                     send_video_start_time = 0;
                     portEXIT_CRITICAL(&time_var_spinlock);
+                    /* 这里drop完直接continue，避免出现连续两次next */
                     drop_video(upload_pic_pointer->video);
+                    unlock_vq();
+                    continue;
                 }
             } else {
                 /* ? */
