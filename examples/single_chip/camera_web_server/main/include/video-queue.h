@@ -8,6 +8,7 @@ typedef struct pic_queue
     void *video;               /* 图片所在视频 */
     int offset;                /* offset in file */
     uint16_t pic_len;
+    uint16_t sn;
     struct pic_queue *next;
     //time_t cur_time;
     unsigned char pic_info[0];

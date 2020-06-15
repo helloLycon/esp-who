@@ -82,7 +82,6 @@ static int send_jpeg(pic_queue *send_pic, time_t argtime)
 //    int rate;
     esp_err_t sock_ret = ESP_OK;
 //    struct timeval start_tv, end_tv;
-    static unsigned long sn = 1;
     pic_queue *sd_pic = NULL;
 
 //    vTaskDelay(10000);
@@ -113,7 +112,7 @@ static int send_jpeg(pic_queue *send_pic, time_t argtime)
                     //v = send_pic->video;
                     //jpeg_data.create_time = send_pic->cur_time;
                     jpeg_data.create_time = argtime;
-                    jpeg_data.num = sn;
+                    jpeg_data.num = send_pic->sn;
                     jpeg_data.send_count = send_len;
                     packet_send_data.data = (void *)(&jpeg_data);
                     packet_send_data.send_len = APP_PACKET_DATA_LEN + 14;
@@ -121,7 +120,7 @@ static int send_jpeg(pic_queue *send_pic, time_t argtime)
                     packet_send_data.type = SEND_FACE_PIC_CODE;
                     
     //                printf("file:%s, line:%d, begin send_data\r\n", __FILE__, __LINE__);
-                    printf("%d send: sn = %d\n", xTaskGetTickCount(), jpeg_data.num);
+                    printf("%d 发: sn = %d\n", xTaskGetTickCount(), jpeg_data.num);
                     ret = send_data(packet_send_data, true);
                     if (CAMERA_OK != ret)
                     {
@@ -152,7 +151,7 @@ static int send_jpeg(pic_queue *send_pic, time_t argtime)
                     //v = send_pic->video;
                     //jpeg_data.create_time = send_pic->cur_time;
                     jpeg_data.create_time = argtime;
-                    jpeg_data.num = sn;
+                    jpeg_data.num = send_pic->sn;
                     jpeg_data.send_count = send_len;
                     packet_send_data.data = (void *)(&jpeg_data);
                     packet_send_data.send_len = send_pic->pic_len - send_len + 14;
@@ -160,7 +159,7 @@ static int send_jpeg(pic_queue *send_pic, time_t argtime)
                     packet_send_data.type = SEND_FACE_PIC_CODE;
                     
     //                printf("file:%s, line:%d, begin send_data\r\n", __FILE__, __LINE__);
-                    printf("%d send: sn = %d size=%d\n", xTaskGetTickCount(), jpeg_data.num, send_pic->pic_len);
+                    printf("%d 发: sn = %d size=%d\n", xTaskGetTickCount(), jpeg_data.num, send_pic->pic_len);
                     ret = send_data(packet_send_data, true);
                     if (CAMERA_OK != ret)
                     {
@@ -198,8 +197,7 @@ static int send_jpeg(pic_queue *send_pic, time_t argtime)
             //v = send_pic->video;
             //jpeg_data.create_time = send_pic->cur_time;
             jpeg_data.create_time = argtime;
-            jpeg_data.num = sn;
-            sn++;
+            jpeg_data.num = send_pic->sn;
             jpeg_data.send_count = send_len;
             packet_send_data.data = (void *)(&jpeg_data);
             packet_send_data.send_len = MD5_STR_LEN + 14;
@@ -207,7 +205,7 @@ static int send_jpeg(pic_queue *send_pic, time_t argtime)
             packet_send_data.type = SEND_FACE_PIC_CODE;
 
     //        printf("file:%s, line:%d, md5_str = %s\r\n", __FILE__, __LINE__, md5_str);
-            printf("%d send: md5 = %s\n", xTaskGetTickCount(), md5_str);
+            printf("%d 发: md5 = %s\n", xTaskGetTickCount(), md5_str);
             ret = send_data(packet_send_data, true);
             if (CAMERA_OK != ret)
             {
@@ -328,6 +326,7 @@ void camera_start_capture(void) {
 
 void camera_finish_capture(void) {
     printf("++++++++++++++++ (%s)\n", __func__);
+    log_enum(LOG_CAMERA_OVER);
     lock_vq();
     vq_tail->complete = true;
     /* 伪图片，代表视频结束 */
@@ -344,7 +343,7 @@ void camera_finish_capture(void) {
 }
 
 void camera_drop_capture(void) {
-    printf("++++++++++++++++ (%s)\n", __func__);
+    //printf("++++++++++++++++ (%s)\n", __func__);
     lock_vq();
     drop_video(vq_tail);
     unlock_vq();
@@ -379,7 +378,7 @@ int camera_capture_one_video(void) {
             portENTER_CRITICAL(&cam_ctrl_spinlock);
             bool b_idle = (cam_ctrl.status == CAM_IDLE);
             portEXIT_CRITICAL(&cam_ctrl_spinlock);
-            if(b_idle || vq_tail->complete) {
+            if(b_idle || NULL==vq_tail || (vq_tail && vq_tail->complete)) {
                 /* free framebuffer */
                 if (fb)
                 {
@@ -557,7 +556,7 @@ static void send_queue_pic_task(void *pvParameter)
 
                     /* 发送时间控制 */
                     if(upload_pic_pointer == v->head_pic) {
-                        printf("+++ head picture\n");
+                        printf("+++++++++ 开始发送一个视频!!!\n");
                         portENTER_CRITICAL(&time_var_spinlock);
                         send_video_start_time = xTaskGetTickCount();
                         portEXIT_CRITICAL(&time_var_spinlock);
@@ -566,12 +565,13 @@ static void send_queue_pic_task(void *pvParameter)
                     unlock_vq();
                     send_jpeg(send_pic, argtime);
                     lock_vq();
+                    free(send_pic);
                 } else {
-                    printf("+++ last pseudo picture\n");
                     /* last pseudo pic */
                     unlock_vq();
                     send_jpeg(NULL, 0);
                     lock_vq();
+                    printf("+++ 一个视频发送结束\n");
                     portENTER_CRITICAL(&time_var_spinlock);
                     send_video_start_time = 0;
                     portEXIT_CRITICAL(&time_var_spinlock);
@@ -584,16 +584,24 @@ static void send_queue_pic_task(void *pvParameter)
             }
 
             /* 尝试下一张图片 */
-            video_queue *video = upload_pic_pointer->video;
-            if(upload_pic_pointer->next) {
-                /* next picture */
-                upload_pic_pointer = upload_pic_pointer->next;
-            } else if(video->next && video->next->head_pic) {
-                /* new video */
-                upload_pic_pointer = video->next->head_pic;
+            video_queue *video = NULL;
+            if( upload_pic_pointer ) {
+                video = upload_pic_pointer->video;
+                if(upload_pic_pointer->next) {
+                    /* next picture */
+                    upload_pic_pointer = upload_pic_pointer->next;
+                } else if(video && video->next && video->next->head_pic) {
+                    /* new video */
+                    upload_pic_pointer = video->next->head_pic;
+                } else {
+                    /* nothing else */
+                    upload_pic_pointer = NULL;
+                    unlock_vq();
+                    break;
+                }
             } else {
                 /* nothing else */
-                upload_pic_pointer = NULL;
+                //upload_pic_pointer = NULL;
                 unlock_vq();
                 break;
             }

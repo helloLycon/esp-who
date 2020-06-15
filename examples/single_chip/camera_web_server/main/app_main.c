@@ -308,8 +308,7 @@ int cam_status_handler(void) {
         case CAM_CAPTURE:
             /* 没人了，持续低电平 */
             if(cam_ctrl.last_falling && ( xTaskGetTickCount()-cam_ctrl.last_falling > sec2tick(MIN_NO_PEOPLE_LOW_LEVEL_TIME_SECS))) {
-                printf("%d => falling edge time out\n", xTaskGetTickCount());
-                log_enum(LOG_CAMERA_OVER);
+                printf("%d => 持续%d秒低电平，结束\n", xTaskGetTickCount(), MIN_NO_PEOPLE_LOW_LEVEL_TIME_SECS);
 
                 portENTER_CRITICAL(&cam_ctrl_spinlock);
                 bool b_start_ticks = !!cam_ctrl.start_ticks;
@@ -326,12 +325,14 @@ int cam_status_handler(void) {
             bool b_start_ticks = !!cam_ctrl.start_ticks;
             portEXIT_CRITICAL(&cam_ctrl_spinlock);
             if(b_start_ticks &&(xTaskGetTickCount()-cam_ctrl.start_ticks > sec2tick(MAX_CAMERA_VIDEO_TIME_SECS))) {
+                printf("结束：最长拍摄(%d s)\n", MAX_CAMERA_VIDEO_TIME_SECS);
                 camera_finish_capture();
                 cam_status_enter_idle();
                 break;
             }
             /* 判断第一次拍摄一定时间内是否有上升沿到来 */
             if(cam_ctrl.first_capture_determined==false && xTaskGetTickCount()>MAX_RISING_EDGE_TIME_OF_FIRST_VALID_VIDEO_TICKS) {
+                printf("+++ 丢弃首次拍摄\n");
                 camera_drop_capture();
                 cam_status_enter_idle();
                 break;
@@ -397,6 +398,7 @@ static void echo_task(void *arg)
         // Read data from the UART
         int len = uart_read_bytes(ECHO_UART_NUM, (uint8_t *)data, BUF_SIZE, 20 / portTICK_RATE_MS);
 
+        cam_status_handler();
         /* 检查wifi连接 */
         if( xTaskGetTickCount() >= sec2tick(10)) {
             static bool oneTime = false;
@@ -437,21 +439,25 @@ static void echo_task(void *arg)
             if( 0 == fallingTickCount) {
                 fallingTickCount = xTaskGetTickCount();
             }*/
-            printf("=> ↓\n");
+            printf("[%d] ↓\n", xTaskGetTickCount());
             cam_edge_handler(0);
         }
         else if( strstr(data, IR_WKUP_PIN_RISING) ) {
             //fallingTickCount = 0;
-            printf("=> ↑\n");
+            printf("[%d] ↑\n", xTaskGetTickCount());
             cam_edge_handler(1);
         }
-#if  0
+#if  1    /* 模拟多次触发 */
         else if( strstr(data, KEY_WKUP_PIN_RISING) ) {
-            printf("=> user key\n");
-            portENTER_CRITICAL(&time_var_spinlock);
-            //ble_config_mode = true;
-            max_sleep_uptime = BLE_CONFIG_MAX_SLEEP_TIME;
-            portEXIT_CRITICAL(&time_var_spinlock);
+            portENTER_CRITICAL(&cam_ctrl_spinlock);
+            enum CamStatus status = cam_ctrl.status;
+            portEXIT_CRITICAL(&cam_ctrl_spinlock);
+            if(status == CAM_IDLE) {
+                camera_start_capture();
+                portENTER_CRITICAL(&cam_ctrl_spinlock);
+                cam_ctrl.status = CAM_CAPTURE;
+                portEXIT_CRITICAL(&cam_ctrl_spinlock);
+            }
         }
 #endif
         else if(strstr(data, REC_STATUS)) {
@@ -572,7 +578,7 @@ const char *mk_time_hex_id(const time_t t,char *str) {
     //struct tm tmv;
     //localtime_r(&t, &tmv);
     //sprintf(str, "f%d%d%d%d%02d%02d", tmv.tm_year+1900, tmv.tm_mon+1, tmv.tm_mday, tmv.tm_hour,tmv.tm_min,tmv.tm_sec);
-    sprintf(str, "%08x", (unsigned int)t);
+    sprintf(str, "%08X", (unsigned int)t);
     return str;
 }
 
@@ -664,35 +670,7 @@ void app_main()
         uint32_t send_v_start_time = send_video_start_time;
         portEXIT_CRITICAL(&time_var_spinlock);
 
-        /* 发送超时 */
-        if(send_v_start_time&&(xTaskGetTickCount() - send_v_start_time > sec2tick(MAX_SINGLE_VIDEO_SEND_TIME_SECS))) {
-            ESP_LOGI(TAG, "send timeout: %d", MAX_SINGLE_VIDEO_SEND_TIME_SECS);
-            log_printf("发送超时(%d s)", MAX_SINGLE_VIDEO_SEND_TIME_SECS);
-            break;
-        }
-
-        /* 没有新触发一段时间 */
-        lock_vq();
-        void *vq = vq_head;
-        unlock_vq();
-        if(NULL == vq) {
-            no_video_cnter++;
-            const int timeout_in_sec = 3;
-            if(no_video_cnter > timeout_in_sec) {
-                ESP_LOGI(TAG, "no new video in %d seconds", timeout_in_sec);
-                log_printf("没有新的拍摄: %d秒", timeout_in_sec);
-                break;
-            }
-        } else {
-            no_video_cnter = 0;
-        }
-
-        /* 配置超时时间 */
-        if(!is_ble_config) {
-            count++;
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
-            continue;
-        } else {
+        if(is_ble_config) {
             if(timeout) {
                 /* 到达最长配置时间 */
                 log_printf("蓝牙配置结束");
@@ -700,8 +678,34 @@ void app_main()
             } else {
                 count++;
                 vTaskDelay(1000 / portTICK_PERIOD_MS);
+                continue;
             }
         }
+        /* 发送超时 */
+        if(send_v_start_time&&(xTaskGetTickCount() - send_v_start_time > sec2tick(MAX_SINGLE_VIDEO_SEND_TIME_SECS))) {
+            ESP_LOGI(TAG, "发送超时(%d s)", MAX_SINGLE_VIDEO_SEND_TIME_SECS);
+            log_printf("发送超时(%d s)", MAX_SINGLE_VIDEO_SEND_TIME_SECS);
+            break;
+        }
+
+        /* 没有任务一段时间 */
+        lock_vq();
+        void *vq = vq_head;
+        unlock_vq();
+        if(NULL == vq) {
+            no_video_cnter++;
+            const int timeout_in_sec = 3;
+            if(no_video_cnter > timeout_in_sec) {
+                ESP_LOGI(TAG, "空队列持续: %d秒", timeout_in_sec);
+                log_printf("空队列持续: %d秒", timeout_in_sec);
+                break;
+            }
+        } else {
+            no_video_cnter = 0;
+        }
+
+        /* 没有要break/continue的 */
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     /* exceed max uptime, timeout */
 

@@ -307,6 +307,7 @@ int wr_sdcard_fp_open(bool force_reinit, time_t t) {
         //mk_sd_time_fname(t, tmp);
         //printf("fname = %s\n", tmp);
         sdfp = fopen(mk_sd_time_fname(t, tmp), "w");
+        printf("打开写文件: fname = %s t=%x\n", tmp, (unsigned)t);
         if(NULL == sdfp) {
             ESP_LOGE(TAG, "fopen failed in %s", __func__);
             vTaskDelete(NULL);
@@ -335,8 +336,9 @@ int rd_sdcard_fp_open(bool force_reinit, time_t t) {
         char tmp[64];
         //video_queue *v = pic->video;
         rd_sdfp = fopen(mk_sd_time_fname(t, tmp), "r");
+        printf("打开读文件: fname = %s t=%x\n", tmp, (unsigned)t);
         if(NULL == rd_sdfp) {
-            ESP_LOGE(TAG, "fopen failed in %s", __func__);
+            ESP_LOGE(TAG, "fopen failed in %s, err: %s", __func__, strerror(errno));
             vTaskDelete(NULL);
         }
         return ESP_OK;
@@ -379,7 +381,7 @@ int read_one_pic_from_sdcard(pic_queue *pic) {
 }
 
 int save_one_pic_into_sdcard(pic_queue *pic) {
-    printf("+++ (%s)\n", __func__);
+    printf("+++ 存: sn = %d\n", pic->sn);
     video_queue *video = pic->video;
     wr_sdcard_fp_open(false, video->time);
 
@@ -440,7 +442,7 @@ void save_video_into_sdcard_task(void *arg) {
             if(save_pic_pointer->next) {
                 /* next picture in same video */
                 save_pic_pointer = save_pic_pointer->next;
-            } else if(video->next && video->next->head_pic) {
+            } else if(video && video->next && video->next->head_pic) {
                 /* new video */
                 save_pic_pointer = video->next->head_pic;
                 wr_sdcard_fp_open(true, video->next->time);

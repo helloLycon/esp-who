@@ -87,6 +87,10 @@ void drop_tail_video(void) {
     free(v);
 }*/
 
+
+/**
+ * 重新分配整个视频图片内存，视频指向sdcard 
+ */
 void mv_video2sdcard(video_queue *v) {
     printf("+++ (%s)\n", __func__);
     /* 已经在sdcard */
@@ -94,43 +98,82 @@ void mv_video2sdcard(video_queue *v) {
         return;
     }
     /* 视频只存在sdcard里 */
-#if 1
     pic_queue tmp_pic;
     pic_queue **ptrptr_pic = &v->head_pic;
-    //int offset = 0;
+    pic_queue **ptr_prev_pic_s_next = NULL;
     for(; *ptrptr_pic ;) {
+         bool is_head = false, is_tail = false;
+         bool reassign_upload = false;
+         bool reassign_save = false;
+
          memcpy(&tmp_pic, *ptrptr_pic, sizeof(pic_queue));
+         /*-------------------------start---------------------------*/
+         if(v->head_pic == *ptrptr_pic) {
+            is_head = true;
+         }
+         if(v->tail_pic == *ptrptr_pic) {
+            is_tail = true;
+         }
+         /* 因为realloc了pic_pointer，两个任务的指针要交接 */
+         if(*ptrptr_pic == upload_pic_pointer) {
+            reassign_upload = true;
+         }
+         if(*ptrptr_pic == save_pic_pointer) {
+            reassign_save = true;
+         }
+         /*-------------------------end---------------------------*/
+
          *ptrptr_pic = realloc(*ptrptr_pic, sizeof(pic_queue));
          if(NULL == *ptrptr_pic) {
             ESP_LOGE(tag, "realloc failed in %s, delete task", __func__);
             vTaskDelete(NULL);
          }
          memcpy(*ptrptr_pic, &tmp_pic, sizeof(pic_queue));
+         /* 重新赋值每个图片的next指针 */
+         if(ptr_prev_pic_s_next) {
+            *ptr_prev_pic_s_next = *ptrptr_pic;
+         }
+         ptr_prev_pic_s_next = &(*ptrptr_pic)->next;
+
+         /*-------------------------start---------------------------*/
+         /* 重新赋值头尾指针 */
+         if(is_head) {
+            v->head_pic = *ptrptr_pic;
+         }
+         if(is_tail) {
+            v->tail_pic = *ptrptr_pic;
+         }
+         /* 因为realloc了pic_pointer，两个任务的指针要交接 */
+         if(reassign_upload) {
+            upload_pic_pointer = *ptrptr_pic;
+         }
+         if(reassign_save) {
+            save_pic_pointer = *ptrptr_pic;
+         }
+         /*-------------------------end---------------------------*/
+
          //(*ptrptr_pic)->cur_time = v->time;
          //(*ptrptr_pic)->offset = offset;
          //offset += (PIC_DATA_OFFSET + tmp_pic->pic_len);
+         *ptrptr_pic = (*ptrptr_pic)->next;
     }
-#else
-    for(pic_queue *pic = v->head_pic; pic; ) {
-        pic_queue *pic_next = pic->next;
-        free(pic);
-        pic = pic_next;
-    }
-    v->head_pic = v->tail_pic = NULL;
-#endif
+    printf("+++ 一个视频保存结束\n");
     v->is_in_sdcard = true;
     xSemaphoreGive(save_pic_completed);
 }
 
 void drop_video(video_queue *v)  {
     printf("+++ (%s)\n", __func__);
-    if(v == upload_pic_pointer->video) {
+
+    if(NULL == upload_pic_pointer) {
+        /* do nothing */
+    } else if(v == upload_pic_pointer->video) {
         portENTER_CRITICAL(&time_var_spinlock);
         send_video_start_time = 0;
         portEXIT_CRITICAL(&time_var_spinlock);
         /* 尝试下个视频 */
         video_queue *video = upload_pic_pointer->video;
-        if(video->next && video->next->head_pic) {
+        if(video && video->next && video->next->head_pic) {
             /* new video */
             upload_pic_pointer = video->next->head_pic;
             xSemaphoreGive(vq_upload_trigger);
@@ -140,10 +183,18 @@ void drop_video(video_queue *v)  {
             rd_sdcard_fp_close();
         }
     }
-    if(v == save_pic_pointer->video) {
+    if(NULL == save_pic_pointer) {
+        if(v==vq_tail) {
+            /**
+             * 关闭fp, 因为saveptr==NULL一定是因为save任务
+             * 超前拍摄任务，正在保存tail视频，writesdfp指向tail视频
+             */
+            wr_sdcard_fp_close();
+        }
+    } else if(v == save_pic_pointer->video) {
         /* 尝试下个视频 */
         video_queue *video = save_pic_pointer->video;
-        if(video->next && video->next->head_pic) {
+        if(video && video->next && video->next->head_pic) {
             /* new video */
             save_pic_pointer = video->next->head_pic;
             wr_sdcard_fp_open(true, video->next->time);
@@ -182,21 +233,24 @@ void drop_video(video_queue *v)  {
 /* 图片入队函数 */
 void pic_in_queue(video_queue *video, int len, unsigned char *buf)
 {
+    static uint16_t sn = 0;
     if(NULL == video) {
         ESP_LOGE(tag, "video is NULL in %s", __func__);
         return;
     }
 
     pic_queue *cur_pic = NULL;
+    int malloc_len;
     if(buf) {
-        cur_pic = (pic_queue *)malloc(PIC_DATA_OFFSET+len);
+        malloc_len = PIC_DATA_OFFSET+len;
     } else {
         /* 尾/空节点 */
-        cur_pic = (pic_queue *)malloc(sizeof(pic_queue));
+        malloc_len = sizeof(pic_queue);
     }
+    cur_pic = (pic_queue *)malloc(malloc_len);
     if (NULL == cur_pic)
     {
-        ESP_LOGE(tag, "file:%s, line:%d, malloc %d, failed!", __FILE__, __LINE__, sizeof(pic_queue));
+        ESP_LOGE(tag, "file:%s, line:%d, malloc %d bytes, failed!", __FILE__, __LINE__, malloc_len);
         return ;
     }
 
@@ -221,14 +275,19 @@ void pic_in_queue(video_queue *video, int len, unsigned char *buf)
     
     if (NULL != video->tail_pic)
     {
+        cur_pic->sn = sn++;
         video->tail_pic->next = cur_pic;
         video->tail_pic = cur_pic;
     }
     else
     {
+        /* 头节点 */
+        sn = 1;
+        cur_pic->sn = sn++;
         video->tail_pic = cur_pic;
         video->head_pic = cur_pic;
     }
+    printf(">>> new picture (%d)\n", cur_pic->sn);
     video->num++;
 }
 

@@ -4,6 +4,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
+#include <errno.h>
 
 #define DEVICE_ID_FLAG      "device_id"
 #define SERVICE_IP_FLAG     "service_ip"
