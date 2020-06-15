@@ -35,6 +35,7 @@ int vid_file_offset = 0;
 
 video_queue *new_video(void) {
     printf("+++ (%s)\n", __func__);
+    log_printf("新的拍摄");
     video_queue *nv = (video_queue *)malloc(sizeof(video_queue));
     if(NULL == nv) {
         ESP_LOGE(tag, "malloc in %s", __func__);
@@ -157,6 +158,7 @@ void mv_video2sdcard(video_queue *v) {
          //offset += (PIC_DATA_OFFSET + tmp_pic->pic_len);
          *ptrptr_pic = (*ptrptr_pic)->next;
     }
+    log_printf("视频保存结束");
     printf("+++ 一个视频保存结束\n");
     v->is_in_sdcard = true;
     xSemaphoreGive(save_pic_completed);

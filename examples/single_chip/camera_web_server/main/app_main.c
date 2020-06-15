@@ -308,6 +308,7 @@ int cam_status_handler(void) {
         case CAM_CAPTURE:
             /* 没人了，持续低电平 */
             if(cam_ctrl.last_falling && ( xTaskGetTickCount()-cam_ctrl.last_falling > sec2tick(MIN_NO_PEOPLE_LOW_LEVEL_TIME_SECS))) {
+                log_printf("持续低电平-结束拍摄");
                 printf("%d => 持续%d秒低电平，结束\n", xTaskGetTickCount(), MIN_NO_PEOPLE_LOW_LEVEL_TIME_SECS);
 
                 portENTER_CRITICAL(&cam_ctrl_spinlock);
@@ -325,6 +326,7 @@ int cam_status_handler(void) {
             bool b_start_ticks = !!cam_ctrl.start_ticks;
             portEXIT_CRITICAL(&cam_ctrl_spinlock);
             if(b_start_ticks &&(xTaskGetTickCount()-cam_ctrl.start_ticks > sec2tick(MAX_CAMERA_VIDEO_TIME_SECS))) {
+                log_printf("最长拍摄结束");
                 printf("结束：最长拍摄(%d s)\n", MAX_CAMERA_VIDEO_TIME_SECS);
                 camera_finish_capture();
                 cam_status_enter_idle();
@@ -332,6 +334,7 @@ int cam_status_handler(void) {
             }
             /* 判断第一次拍摄一定时间内是否有上升沿到来 */
             if(cam_ctrl.first_capture_determined==false && xTaskGetTickCount()>MAX_RISING_EDGE_TIME_OF_FIRST_VALID_VIDEO_TICKS) {
+                log_printf("丢弃首次拍摄");
                 printf("+++ 丢弃首次拍摄\n");
                 camera_drop_capture();
                 cam_status_enter_idle();

@@ -326,7 +326,6 @@ void camera_start_capture(void) {
 
 void camera_finish_capture(void) {
     printf("++++++++++++++++ (%s)\n", __func__);
-    log_enum(LOG_CAMERA_OVER);
     lock_vq();
     vq_tail->complete = true;
     /* 伪图片，代表视频结束 */
@@ -556,6 +555,7 @@ static void send_queue_pic_task(void *pvParameter)
 
                     /* 发送时间控制 */
                     if(upload_pic_pointer == v->head_pic) {
+                        log_printf("开始发送");
                         printf("+++++++++ 开始发送一个视频!!!\n");
                         portENTER_CRITICAL(&time_var_spinlock);
                         send_video_start_time = xTaskGetTickCount();
@@ -571,6 +571,7 @@ static void send_queue_pic_task(void *pvParameter)
                     unlock_vq();
                     send_jpeg(NULL, 0);
                     lock_vq();
+                    log_printf("发送结束");
                     printf("+++ 一个视频发送结束\n");
                     portENTER_CRITICAL(&time_var_spinlock);
                     send_video_start_time = 0;
