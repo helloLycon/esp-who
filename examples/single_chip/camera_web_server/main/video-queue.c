@@ -46,6 +46,7 @@ video_queue *new_video(void) {
     nv->time = time(NULL);
 
     lock_vq();
+    /* 新的视频入队 */
     if(NULL == vq_head) {
         vq_head = vq_tail = nv;
     } else {
@@ -109,6 +110,7 @@ void mv_video2sdcard(video_queue *v) {
 
          memcpy(&tmp_pic, *ptrptr_pic, sizeof(pic_queue));
          /*-------------------------start---------------------------*/
+         /* 是否需要更新head和tail指针 */
          if(v->head_pic == *ptrptr_pic) {
             is_head = true;
          }
@@ -173,7 +175,7 @@ void drop_video(video_queue *v)  {
         portENTER_CRITICAL(&time_var_spinlock);
         send_video_start_time = 0;
         portEXIT_CRITICAL(&time_var_spinlock);
-        /* 尝试下个视频 */
+        /* 尝试下个视频，函数返回后需要避免再次next */
         video_queue *video = upload_pic_pointer->video;
         if(video && video->next && video->next->head_pic) {
             /* new video */
@@ -194,7 +196,7 @@ void drop_video(video_queue *v)  {
             wr_sdcard_fp_close();
         }
     } else if(v == save_pic_pointer->video) {
-        /* 尝试下个视频 */
+        /* 尝试下个视频，函数返回后需要避免再次next */
         video_queue *video = save_pic_pointer->video;
         if(video && video->next && video->next->head_pic) {
             /* new video */

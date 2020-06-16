@@ -409,6 +409,7 @@ void abort_sdcard_task(void) {
 }
 
 void sd_handle_pic(pic_queue *pic) {
+    /* 根据len判断是真实图片还是伪图片 */
     if(pic->pic_len) {
         int err = save_one_pic_into_sdcard(pic);
         if(err != ESP_OK) {

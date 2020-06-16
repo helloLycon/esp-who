@@ -324,11 +324,13 @@ int cam_power_down(void) {
     return -1;
 }
 
+/* 触发新的拍摄 */
 void camera_start_capture(void) {
     printf("++++++++++++++++ (%s)\n", __func__);
     xSemaphoreGive(start_capture_trigger);
 }
 
+/* 结束拍摄 */
 void camera_finish_capture(void) {
     printf("++++++++++++++++ (%s)\n", __func__);
     lock_vq();
@@ -346,6 +348,7 @@ void camera_finish_capture(void) {
     xSemaphoreGive(vq_save_trigger);
 }
 
+/* 丢弃：发送完成/无效视频 */
 void camera_drop_capture(void) {
     //printf("++++++++++++++++ (%s)\n", __func__);
     lock_vq();
@@ -382,6 +385,7 @@ int camera_capture_one_video(void) {
             portENTER_CRITICAL(&cam_ctrl_spinlock);
             bool b_idle = (cam_ctrl.status == CAM_IDLE);
             portEXIT_CRITICAL(&cam_ctrl_spinlock);
+            /* 拍摄结束(丢弃) / 视频被丢弃 / 视频拍摄结束 */
             if(b_idle || NULL==vq_tail || (vq_tail && vq_tail->complete)) {
                 /* free framebuffer */
                 if (fb)
@@ -457,6 +461,7 @@ static void camera_capture_task(void *arg)
         /* wait */
         xSemaphoreTake(start_capture_trigger, portMAX_DELAY);
         while(true) {
+            /* 等待存入sdcard完成，避免内存不够用 */
             lock_vq();
             bool bv = (vq_tail && false == vq_tail->is_in_sdcard);
             unlock_vq();
@@ -558,16 +563,17 @@ static void send_queue_pic_task(void *pvParameter)
                     }
                     time_t argtime = v->time;
 
-                    /* 发送时间控制 */
                     if(upload_pic_pointer == v->head_pic) {
                         log_printf("开始发送");
                         printf("+++++++++ 开始发送一个视频!!!\n");
                         portENTER_CRITICAL(&time_var_spinlock);
+                        /* 发送单个视频时间限制 */
                         send_video_start_time = xTaskGetTickCount();
                         portEXIT_CRITICAL(&time_var_spinlock);
                     }
                     
                     unlock_vq();
+                    /* 发送时间较长，解锁vq mutex */
                     send_jpeg(send_pic, argtime);
                     lock_vq();
                     free(send_pic);
