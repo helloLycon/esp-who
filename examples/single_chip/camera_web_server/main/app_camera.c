@@ -77,7 +77,7 @@ static int send_jpeg(pic_queue *send_pic, time_t argtime)
     packet_info packet_send_data;
     send_jpeg_info jpeg_data;
     int send_len = 0;
-    int socket_fd = -1;
+    //int socket_fd = -1;
     unsigned long send_time;
 //    int rate;
     esp_err_t sock_ret = ESP_OK;
@@ -86,13 +86,18 @@ static int send_jpeg(pic_queue *send_pic, time_t argtime)
 
 //    vTaskDelay(10000);
 
-    get_socket_status(&socket_fd);
+    //get_socket_status(&socket_fd);
 //    printf("file:%s, line:%d, socket_fd = %d\r\n", __FILE__, __LINE__, socket_fd);
     
-    if (socket_fd < 0)
+    while (get_socket_status(NULL) < 0)
     {
         sock_ret = create_tcp_client();
-        ESP_LOGE(TAG, "file:%s, line:%d, sock_ret = %d\r\n", __FILE__, __LINE__, sock_ret);
+        if(sock_ret == ESP_OK) {
+            break;
+        } else {
+            ESP_LOGE(TAG, "file:%s, line:%d, sock_ret = %d\r\n", __FILE__, __LINE__, sock_ret);
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+        }
     }
 
     if (ESP_OK == sock_ret)
@@ -254,7 +259,7 @@ static int send_jpeg(pic_queue *send_pic, time_t argtime)
 void send_heartbeat_packet()
 {
     int ret;
-    int socket_fd;
+    //int socket_fd;
     int sock_ret = -1;
     send_heartbeat_info heartbeat_data;
     packet_info packet_send_data;
@@ -268,17 +273,17 @@ void send_heartbeat_packet()
     packet_send_data.send_len = 6;
     packet_send_data.data = (void *)(&heartbeat_data);
 
-    get_socket_status(&socket_fd);
+    //get_socket_status(&socket_fd);
 //    printf("file:%s, line:%d, socket_fd = %d\r\n", __FILE__, __LINE__, socket_fd);
-    
-    if (socket_fd < 0)
+    while (get_socket_status(NULL) < 0)
     {
         sock_ret = create_tcp_client();
-        printf("file:%s, line:%d, sock_ret = %d\r\n", __FILE__, __LINE__, sock_ret);
-    }
-    else
-    {
-        sock_ret = ESP_OK;
+        if(sock_ret == ESP_OK) {
+            break;
+        } else {
+            ESP_LOGE(TAG, "file:%s, line:%d, sock_ret = %d\r\n", __FILE__, __LINE__, sock_ret);
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+        }
     }
 
     if (ESP_OK == sock_ret)

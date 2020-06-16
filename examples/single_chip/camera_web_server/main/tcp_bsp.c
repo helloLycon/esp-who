@@ -112,9 +112,12 @@ void esp_wait_sntp_sync(void)
 *               Ver0.0.1:
                     yf-lwj, 2020/01/09, 初始化版本\n 
 */
-void get_socket_status(int *socket_fd)
+int get_socket_status(int *socket_fd)
 {
-    *socket_fd = connect_socket;
+    if(socket_fd) {
+        *socket_fd = connect_socket;
+    }
+    return connect_socket;
 }
 
 /*

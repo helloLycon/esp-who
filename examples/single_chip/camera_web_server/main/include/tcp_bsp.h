@@ -85,7 +85,7 @@ int recv_data();
 
 int send_data(packet_info packet_data, bool);
 
-void get_socket_status(int *socket_fd);
+int get_socket_status(int *socket_fd);
 
 //close all socket
 void close_socket();
