@@ -676,8 +676,14 @@ static void send_queue_pic_task(void *pvParameter)
     vTaskDelete(NULL);
 }
 
+void pic_data_offset_test(void) {
+    printf("sz = %d, offset = %d\n", sizeof(pic_queue), PIC_DATA_OFFSET);
+}
+
+
 int app_camera_main ()
 {
+    pic_data_offset_test();
 #if CONFIG_CAMERA_MODEL_ESP_EYE
     /* IO13, IO14 is designed for JTAG by default,
      * to use it as generalized input,
