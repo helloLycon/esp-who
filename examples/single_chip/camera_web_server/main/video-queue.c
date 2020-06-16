@@ -31,7 +31,7 @@ const char *tag = "video-queue";
 video_queue  *vq_head = NULL;
 video_queue  *vq_tail = NULL;
 
-int vid_file_offset = 0;
+int offset_in_vid_file = PIC_DATA_OFFSET;
 
 video_queue *new_video(void) {
     printf("+++ (%s)\n", __func__);
@@ -56,7 +56,7 @@ video_queue *new_video(void) {
     }
 
     /* 重置vid offset */
-    vid_file_offset = 0;
+    offset_in_vid_file = PIC_DATA_OFFSET;
     unlock_vq();
     return nv;
 }
@@ -268,8 +268,8 @@ void pic_in_queue(video_queue *video, int len, unsigned char *buf)
     }
 #endif
     cur_pic->next = NULL;
-    cur_pic->offset = vid_file_offset;
-    vid_file_offset += (PIC_DATA_OFFSET + len);
+    cur_pic->offset = offset_in_vid_file;
+    offset_in_vid_file += (PIC_DATA_OFFSET + len);
     cur_pic->video = video;
     //cur_pic->cur_time = time(NULL);
     cur_pic->pic_len = len;
