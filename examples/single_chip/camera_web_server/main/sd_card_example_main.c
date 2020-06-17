@@ -369,7 +369,7 @@ int read_one_pic_from_sdcard(pic_queue *pic) {
     printf("+++ (%s)\n", __func__);
     video_queue *vid = pic->video;
     rd_sdcard_fp_open(false, vid->time);
-    if(fseek(rd_sdfp, pic->offset, SEEK_SET)<0) {
+    if(fseek(rd_sdfp, pic->offset_in_vid_file, SEEK_SET)<0) {
         ESP_LOGE(tag, "fseek failed in %s", __func__);
         return ESP_FAIL;
     }
@@ -433,8 +433,7 @@ void save_video_into_sdcard_task(void *arg) {
             if(save_pic_pointer) {
                 sd_handle_pic(save_pic_pointer);
             } else {
-                //sd_complete_video();
-                /* 不会到这里 */
+                /* 没有 */
                 unlock_vq();
                 break;
             }

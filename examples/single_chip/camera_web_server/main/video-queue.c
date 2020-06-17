@@ -31,7 +31,6 @@ const char *tag = "video-queue";
 video_queue  *vq_head = NULL;
 video_queue  *vq_tail = NULL;
 
-int offset_in_vid_file = PIC_DATA_OFFSET;
 
 video_queue *new_video(void) {
     printf("+++ (%s)\n", __func__);
@@ -55,8 +54,6 @@ video_queue *new_video(void) {
         vq_tail = nv;
     }
 
-    /* 重置vid offset */
-    offset_in_vid_file = PIC_DATA_OFFSET;
     unlock_vq();
     return nv;
 }
@@ -167,6 +164,9 @@ void mv_video2sdcard(video_queue *v) {
 }
 
 void drop_video(video_queue *v)  {
+    if(NULL == v) {
+        return;
+    }
     printf("+++ (%s)\n", __func__);
 
     if(NULL == upload_pic_pointer) {
@@ -238,6 +238,7 @@ void drop_video(video_queue *v)  {
 void pic_in_queue(video_queue *video, int len, unsigned char *buf)
 {
     static uint16_t sn = 0;
+    static int offset_in_vid_file = PIC_DATA_OFFSET;
     if(NULL == video) {
         ESP_LOGE(tag, "video is NULL in %s", __func__);
         return;
@@ -268,10 +269,7 @@ void pic_in_queue(video_queue *video, int len, unsigned char *buf)
     }
 #endif
     cur_pic->next = NULL;
-    cur_pic->offset = offset_in_vid_file;
-    offset_in_vid_file += (PIC_DATA_OFFSET + len);
     cur_pic->video = video;
-    //cur_pic->cur_time = time(NULL);
     cur_pic->pic_len = len;
     if(buf) {
         memcpy(cur_pic->pic_info, buf, len);
@@ -280,14 +278,21 @@ void pic_in_queue(video_queue *video, int len, unsigned char *buf)
     if (NULL != video->tail_pic)
     {
         cur_pic->sn = sn++;
+        cur_pic->offset_in_vid_file = offset_in_vid_file;
+        offset_in_vid_file += (PIC_DATA_OFFSET + len);
         video->tail_pic->next = cur_pic;
         video->tail_pic = cur_pic;
     }
     else
     {
-        /* 头节点 */
+        /*----- 头节点 -----*/
+        /* 重置图片序列号 */
         sn = 1;
         cur_pic->sn = sn++;
+        /* 重置偏移量(in video file) */
+        offset_in_vid_file = PIC_DATA_OFFSET;
+        cur_pic->offset_in_vid_file = offset_in_vid_file;
+        offset_in_vid_file += (PIC_DATA_OFFSET + len);
         video->tail_pic = cur_pic;
         video->head_pic = cur_pic;
     }

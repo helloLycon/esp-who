@@ -82,7 +82,6 @@ static int send_jpeg(pic_queue *send_pic, time_t argtime)
 //    int rate;
     esp_err_t sock_ret = ESP_OK;
 //    struct timeval start_tv, end_tv;
-    pic_queue *sd_pic = NULL;
 
 //    vTaskDelay(10000);
 
@@ -131,9 +130,6 @@ static int send_jpeg(pic_queue *send_pic, time_t argtime)
                     {
                         printf("file:%s, line:%d, send_data failed\r\n", __FILE__, __LINE__);
                         close_socket();
-                        if(sd_pic) {
-                            free(sd_pic);
-                        }
                         return ret;
                     }
     /*                else
@@ -170,9 +166,6 @@ static int send_jpeg(pic_queue *send_pic, time_t argtime)
                     {
                         printf("file:%s, line:%d, send_data failed\r\n", __FILE__, __LINE__);
                         close_socket();
-                        if(sd_pic) {
-                            free(sd_pic);
-                        }
                         return ret;
                     }
     /*                else
@@ -216,9 +209,6 @@ static int send_jpeg(pic_queue *send_pic, time_t argtime)
             {
                 printf("file:%s, line:%d, send_data failed\r\n", __FILE__, __LINE__);
                 close_socket();
-                if(sd_pic) {
-                    free(sd_pic);
-                }
                 return ret;
             }
         }
@@ -250,9 +240,6 @@ static int send_jpeg(pic_queue *send_pic, time_t argtime)
         return CAMERA_ERROR_CREATE_SOCKET_FAILED;
     }
 
-    if(sd_pic) {
-        free(sd_pic);
-    }
     return CAMERA_OK;
 }
 
@@ -528,6 +515,8 @@ static void recv_data_task(void *pvParameter)
 /* 队列读取图片并发送出去 */
 static void send_queue_pic_task(void *pvParameter)
 {
+    void *old_video;
+    uint16_t old_sn;
     int ret;
     extern int max_sleep_uptime;
     extern unsigned char is_connect;
@@ -551,6 +540,9 @@ static void send_queue_pic_task(void *pvParameter)
         for(;;) {
             lock_vq();
             if(upload_pic_pointer) {
+                /*---------保存当前图片信息----------*/
+                old_sn = upload_pic_pointer->sn;
+                old_video = upload_pic_pointer->video;
                 if(upload_pic_pointer->pic_len) {
                     /*------------------判断mem/sdcard-------------------*/
                     video_queue *v = upload_pic_pointer->video;
@@ -571,29 +563,36 @@ static void send_queue_pic_task(void *pvParameter)
                         send_video_start_time = xTaskGetTickCount();
                         portEXIT_CRITICAL(&time_var_spinlock);
                     }
-                    
+
                     unlock_vq();
                     /* 发送时间较长，解锁vq mutex */
                     send_jpeg(send_pic, argtime);
                     lock_vq();
                     free(send_pic);
+                    if(upload_pic_pointer && (upload_pic_pointer->video != old_video || upload_pic_pointer->sn != old_sn )) {
+                        /* 图片发生变化，不能next，直接continue，避免两次next */
+                        unlock_vq();
+                        continue;
+                    }
                 } else {
                     /* last pseudo pic */
                     unlock_vq();
                     send_jpeg(NULL, 0);
-                    lock_vq();
                     log_printf("发送结束");
                     printf("+++ 一个视频发送结束\n");
                     portENTER_CRITICAL(&time_var_spinlock);
                     send_video_start_time = 0;
                     portEXIT_CRITICAL(&time_var_spinlock);
-                    /* 这里drop完直接continue，避免出现连续两次next */
-                    drop_video(upload_pic_pointer->video);
-                    unlock_vq();
-                    continue;
+                    lock_vq();
+                    drop_video(old_video);
+                    if(upload_pic_pointer && (upload_pic_pointer->video != old_video || upload_pic_pointer->sn != old_sn )) {
+                        /* 图片发生变化，不能next，直接continue，避免两次next */
+                        unlock_vq();
+                        continue;
+                    }
                 }
             } else {
-                /* ? */
+                /* 没有 */
                 unlock_vq();
                 break;
             }

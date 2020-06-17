@@ -307,7 +307,7 @@ int cam_status_handler(void) {
 #endif
         case CAM_CAPTURE:
             /* 没人了，持续低电平 */
-            if(cam_ctrl.last_falling && ( xTaskGetTickCount()-cam_ctrl.last_falling > sec2tick(MIN_NO_PEOPLE_LOW_LEVEL_TIME_SECS))) {
+            if(cam_ctrl.last_falling && cam_ctrl.last_rising_edge && (cam_ctrl.last_rising_edge < cam_ctrl.last_falling) &&( xTaskGetTickCount()-cam_ctrl.last_falling > sec2tick(MIN_NO_PEOPLE_LOW_LEVEL_TIME_SECS))) {
                 log_printf("持续低电平-结束拍摄");
                 printf("%d => 持续%d秒低电平，结束\n", xTaskGetTickCount(), MIN_NO_PEOPLE_LOW_LEVEL_TIME_SECS);
 
@@ -452,15 +452,8 @@ static void echo_task(void *arg)
         }
 #if  1    /* 模拟多次触发 */
         else if( !strncmp(data, KEY_WKUP_PIN_RISING, strlen(KEY_WKUP_PIN_RISING)) ) {
-            portENTER_CRITICAL(&cam_ctrl_spinlock);
-            enum CamStatus status = cam_ctrl.status;
-            portEXIT_CRITICAL(&cam_ctrl_spinlock);
-            if(status == CAM_IDLE) {
-                camera_start_capture();
-                portENTER_CRITICAL(&cam_ctrl_spinlock);
-                cam_ctrl.status = CAM_CAPTURE;
-                portEXIT_CRITICAL(&cam_ctrl_spinlock);
-            }
+            cam_edge_handler(1);
+            cam_edge_handler(1);
         }
 #endif
         else if(!strncmp(data, REC_STATUS, strlen(REC_STATUS))) {

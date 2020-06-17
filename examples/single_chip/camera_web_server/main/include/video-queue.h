@@ -6,7 +6,7 @@
 typedef struct pic_queue
 {
     void *video;               /* 图片所在视频 */
-    int offset;                /* offset in file */
+    int offset_in_vid_file;    /* offset in file */
     uint16_t pic_len;
     uint16_t sn;
     struct pic_queue *next;
