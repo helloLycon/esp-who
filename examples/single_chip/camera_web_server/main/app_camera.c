@@ -433,6 +433,7 @@ int camera_capture_one_video(void) {
 
 static void camera_capture_task(void *arg)
 {
+    const int MAX_CAPTURE_TRIGGER_TIMES = 10;
     char timeStr[32];
     uint8_t reg[8];
     time_t timeValue;
@@ -443,7 +444,8 @@ static void camera_capture_task(void *arg)
 
     /* 录像计时 */
     cur_time = old_time = xTaskGetTickCount();
-    for(;;)
+    /* 最多触发次数 */
+    for(int i=0; i<MAX_CAPTURE_TRIGGER_TIMES ; i++)
     {
         /* wait */
         xSemaphoreTake(start_capture_trigger, portMAX_DELAY);
@@ -462,7 +464,12 @@ static void camera_capture_task(void *arg)
         }
         camera_capture_one_video();
     }
-
+    portENTER_CRITICAL(&cam_ctrl_spinlock);
+    cam_ctrl.status = CAM_REACH_MAX_TRIGGER_TIMES;
+    portEXIT_CRITICAL(&cam_ctrl_spinlock);
+    ESP_LOGI(TAG, "到达最大触发次数：%d次", MAX_CAPTURE_TRIGGER_TIMES);
+    log_printf("最多触发次数：%d次", MAX_CAPTURE_TRIGGER_TIMES);
+    vTaskDelete(NULL);
 }
 
 #if 0

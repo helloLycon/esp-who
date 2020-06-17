@@ -69,6 +69,9 @@
 /* 最长单个视频发送时间 */
 #define MAX_SINGLE_VIDEO_SEND_TIME_SECS   60
 
+/* 最长运行时间 */
+#define MAX_RUN_TIME_SECS   (10*60) /*10min*/
+
 
 static const char *TAG = "main";
 static const char *SEMTAG = "semaphore";
@@ -355,7 +358,11 @@ int cam_edge_handler(bool rising) {
         portENTER_CRITICAL(&cam_ctrl_spinlock);
         enum CamStatus status = cam_ctrl.status;
         portEXIT_CRITICAL(&cam_ctrl_spinlock);
-        if(cam_ctrl.first_capture_determined == false && CAM_CAPTURE == status && xTaskGetTickCount()<MAX_RISING_EDGE_TIME_OF_FIRST_VALID_VIDEO_TICKS) {
+
+        if(status == CAM_REACH_MAX_TRIGGER_TIMES) {
+            /* 已经达到最大触发次数 */
+            return 0;
+        } else if(cam_ctrl.first_capture_determined == false && CAM_CAPTURE == status && xTaskGetTickCount()<MAX_RISING_EDGE_TIME_OF_FIRST_VALID_VIDEO_TICKS) {
             /* valid video, do nothing */
             cam_ctrl.first_capture_determined = true;
         } else if(CAM_IDLE == status) {
@@ -656,9 +663,8 @@ void app_main()
     xTaskCreate(echo_task, "uart_echo_task", 3072, NULL, 20, NULL);
     xTaskCreate(save_video_into_sdcard_task, "save_video", 2048, NULL, 10, NULL);
 
-    int no_video_cnter = 0;
     /* 等待超时 */
-    while (true)
+    for (int no_video_cnter = 0;;)
     {
         portENTER_CRITICAL(&time_var_spinlock);
         bool timeout = count > max_sleep_uptime;
@@ -687,6 +693,7 @@ void app_main()
         /* 没有任务一段时间 */
         lock_vq();
         void *vq = vq_head;
+        //printf("vq_head = %p\n", vq);
         unlock_vq();
         if(NULL == vq) {
             no_video_cnter++;
@@ -698,6 +705,13 @@ void app_main()
             }
         } else {
             no_video_cnter = 0;
+        }
+
+        /* 单次最长运行时间 */
+        if(xTaskGetTickCount() > sec2tick(MAX_RUN_TIME_SECS)) {
+            log_printf("最长运行: %d秒", MAX_RUN_TIME_SECS);
+            ESP_LOGI(TAG, "到达最长运行时间: %d秒", MAX_RUN_TIME_SECS);
+            break;
         }
 
         /* 没有要break/continue的 */

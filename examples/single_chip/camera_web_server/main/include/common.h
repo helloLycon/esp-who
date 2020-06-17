@@ -85,6 +85,7 @@ typedef struct init_info{
 enum CamStatus {
     CAM_IDLE = 0,
     CAM_CAPTURE,
+    CAM_REACH_MAX_TRIGGER_TIMES,
 };
 
 struct cam_ctrl_block {

@@ -30,7 +30,7 @@ static const char *tag = "sdcard";
 static const char *filename = "/t/log";
 
 static char *logbuf;
-static const int logbuf_size = 1024;
+static const int logbuf_size = 1024*2;
 static int logbuf_offset = 0;
 
 static xSemaphoreHandle sd_log_mutex;
