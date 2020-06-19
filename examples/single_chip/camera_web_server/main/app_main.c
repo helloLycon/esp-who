@@ -298,6 +298,12 @@ void cam_status_enter_idle(void) {
 }
 
 int cam_status_handler(void) {
+    portENTER_CRITICAL(&time_var_spinlock);
+    bool is_ble_config = ble_config_mode;
+    portEXIT_CRITICAL(&time_var_spinlock);
+    if(is_ble_config) {
+        return 0;
+    }
     portENTER_CRITICAL(&cam_ctrl_spinlock);
     enum CamStatus status = cam_ctrl.status;
     portEXIT_CRITICAL(&cam_ctrl_spinlock);
@@ -351,7 +357,53 @@ int cam_status_handler(void) {
     return 0;
 }
 
+int enter_ble_config_mode(void) {
+    /* ota */
+    vTaskDelete(simple_ota_example_task_handle);
+    for(int i=0; i<20; i++) {
+        xSemaphoreGive(g_update_over);
+    }
+    vTaskDelete(get_camera_data_task_handle);
+    vTaskDelete(save_video_into_sdcard_task_handle);
+    vTaskDelete(send_queue_pic_task_handle);
+    /* stop wifi */
+    esp_err_t err = esp_wifi_stop();
+    if(err != ESP_OK) {
+        ESP_LOGE(TAG, "esp_wifi_stop failed");
+    }
+    err = esp_wifi_deinit();
+    if(err != ESP_OK) {
+        ESP_LOGE(TAG, "esp_wifi_deinit failed");
+    }
+    is_connect = false;
+    /* camera */
+    err = esp_camera_deinit();
+    if(err != ESP_OK) {
+        ESP_LOGE(TAG, "esp_camera_deinit failed");
+    }
+    /* start bt */
+    gatts_init();
+    log_enum(LOG_CONFIGURATION);
+    
+    portENTER_CRITICAL(&time_var_spinlock);
+    ble_config_mode = true;
+    max_sleep_uptime = BLE_CONFIG_MAX_SLEEP_TIME;
+    portEXIT_CRITICAL(&time_var_spinlock);
+
+    /* 避免死锁 */
+    unlock_vq();
+    unlock_vq();
+    unlock_vq();
+    return 0;
+}
+
 int cam_edge_handler(bool rising) {
+    portENTER_CRITICAL(&time_var_spinlock);
+    bool is_ble_config = ble_config_mode;
+    portEXIT_CRITICAL(&time_var_spinlock);
+    if(is_ble_config) {
+        return 0;
+    }
     if(rising) {
         cam_ctrl.prev_rising_edge = cam_ctrl.last_rising_edge;
         cam_ctrl.last_rising_edge = xTaskGetTickCount();
@@ -410,27 +462,6 @@ static void echo_task(void *arg)
         int len = uart_read_bytes(ECHO_UART_NUM, (uint8_t *)data, BUF_SIZE, 20 / portTICK_RATE_MS);
 
         cam_status_handler();
-        /* 检查wifi连接 */
-        if( xTaskGetTickCount() >= sec2tick(10)) {
-            static bool oneTime = false;
-            /* 未连接，无用户设置，只执行一次 */
-            portENTER_CRITICAL(&time_var_spinlock);
-            bool b = (ble_config_mode == false);
-            portEXIT_CRITICAL(&time_var_spinlock);
-            portENTER_CRITICAL(&is_connect_server_spinlock);
-            bool b1 = false == is_connect_server;
-            portEXIT_CRITICAL(&is_connect_server_spinlock);
-            if(b1 && b && oneTime == false) {
-                log_printf("连不上wifi或服务器");
-                ESP_LOGE(TAG, "=-> NO WIFI/SERVER CONNECTED, send shutdown request\n");
-                sdcard_log_write();
-                shut_down_status = true;
-                uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
-                oneTime = true;
-                continue;
-                //vTaskDelay(1000 / portTICK_PERIOD_MS);
-            }
-        }
 
         //printf("%d\n", xTaskGetTickCount());
         if((len <= 0) || (data[0] != '~')) {
@@ -470,29 +501,7 @@ static void echo_task(void *arg)
             if( 'k' == data[strlen(REC_STATUS)] ) {
                 /* key */
                 printf("STATUS: key, enter BT-CONFIGURATION mode...\n");
-                vTaskDelete(simple_ota_example_task_handle);
-                vTaskDelete(send_queue_pic_task_handle);
-                vTaskDelete(get_camera_data_task_handle);
-                esp_err_t err = esp_wifi_stop();
-                if(err != ESP_OK) {
-                    ESP_LOGE(TAG, "esp_wifi_stop failed");
-                }
-                err = esp_wifi_deinit();
-                if(err != ESP_OK) {
-                    ESP_LOGE(TAG, "esp_wifi_deinit failed");
-                }
-                err = esp_camera_deinit();
-                if(err != ESP_OK) {
-                    ESP_LOGE(TAG, "esp_camera_deinit failed");
-                }
-                /* start bt */
-                gatts_init();
-                log_enum(LOG_CONFIGURATION);
-
-                portENTER_CRITICAL(&time_var_spinlock);
-                ble_config_mode = true;
-                max_sleep_uptime = BLE_CONFIG_MAX_SLEEP_TIME;
-                portEXIT_CRITICAL(&time_var_spinlock);
+                enter_ble_config_mode();
             } else {
                 printf("STATUS: ir\n");
             }
@@ -663,8 +672,9 @@ void app_main()
 
     /* add by liuwenjian 2020-3-4 begin */
     /* 创建任务接收系统消息 */
+    sdcard_init();
+    xTaskCreate(save_video_into_sdcard_task, "save_video", 2048, NULL, 10, &save_video_into_sdcard_task_handle);
     xTaskCreate(echo_task, "uart_echo_task", 3072, NULL, 20, NULL);
-    xTaskCreate(save_video_into_sdcard_task, "save_video", 2048, NULL, 10, NULL);
 
     /* 等待超时 */
     for (int no_video_cnter = 0;;)
@@ -675,6 +685,7 @@ void app_main()
         uint32_t send_v_start_time = send_video_start_time;
         portEXIT_CRITICAL(&time_var_spinlock);
 
+        //printf("ble_config_mode = %d\n", is_ble_config);
         if(is_ble_config) {
             if(timeout) {
                 /* 到达最长配置时间 */
@@ -716,6 +727,12 @@ void app_main()
             ESP_LOGI(TAG, "到达最长运行时间: %d秒", MAX_RUN_TIME_SECS);
             break;
         }
+        /* 检查wifi连接 */
+        if( xTaskGetTickCount() >= sec2tick(10) && false == is_connect_server) {
+            log_printf("连不上wifi或服务器");
+            ESP_LOGE(TAG, "=-> NO WIFI/SERVER CONNECTED, send shutdown request\n");
+            break;
+        }
 
         /* 没有要break/continue的 */
         if(shut_down_status) {
@@ -733,7 +750,7 @@ void app_main()
     //log_printf("运行超时 (%d 秒)", runtime);
     /*----------write log-----------*/
     sdcard_log_write();
-    printf("=-> timed out, send shutdown request\n");
+    printf("=-> break loop, send shutdown request\n");
     for(;;) {
         uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
         vTaskDelay(1000 / portTICK_PERIOD_MS);

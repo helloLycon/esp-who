@@ -34,6 +34,7 @@ static const int logbuf_size = 1024*2;
 static int logbuf_offset = 0;
 
 static xSemaphoreHandle sd_log_mutex;
+TaskHandle_t save_video_into_sdcard_task_handle;
 // This example can use SDMMC and SPI peripherals to communicate with SD card.
 // By default, SDMMC peripheral is used.
 // To enable SPI mode, uncomment the following line:
@@ -423,7 +424,6 @@ void sd_handle_pic(pic_queue *pic) {
 
 
 void save_video_into_sdcard_task(void *arg) {
-    sdcard_init();
     for(;;) {
         /* wait for condition */
         xSemaphoreTake(vq_save_trigger, portMAX_DELAY);

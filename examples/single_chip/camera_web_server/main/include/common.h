@@ -113,6 +113,7 @@ extern int s_retry_num;
 extern TaskHandle_t get_camera_data_task_handle;
 extern TaskHandle_t send_queue_pic_task_handle;
 extern TaskHandle_t simple_ota_example_task_handle;
+extern TaskHandle_t save_video_into_sdcard_task_handle;
 extern struct cam_ctrl_block cam_ctrl;
 extern uint32_t send_video_start_time;
 
