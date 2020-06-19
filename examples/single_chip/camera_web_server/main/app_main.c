@@ -88,6 +88,7 @@ init_info g_init_data;
 portMUX_TYPE time_var_spinlock = portMUX_INITIALIZER_UNLOCKED;
 int max_sleep_uptime = DEF_MAX_SLEEP_TIME;
 bool ble_config_mode = false;
+bool shut_down_status = false;
 
 xSemaphoreHandle vpercent_ready;
 bool rtc_set_magic_match, wake_up_flag;
@@ -421,8 +422,9 @@ static void echo_task(void *arg)
             portEXIT_CRITICAL(&is_connect_server_spinlock);
             if(b1 && b && oneTime == false) {
                 log_printf("连不上wifi或服务器");
-                sdcard_log_write();
                 ESP_LOGE(TAG, "=-> NO WIFI/SERVER CONNECTED, send shutdown request\n");
+                sdcard_log_write();
+                shut_down_status = true;
                 uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
                 oneTime = true;
                 continue;
@@ -541,8 +543,9 @@ static void echo_task(void *arg)
             if(0 == vPercent) {
                 /* 防止电池过放，低压关机 */
                 log_enum(LOG_LOW_BATTERY);
-                sdcard_log_write();
                 printf("=-> low battery, send shutdown request\n");
+                sdcard_log_write();
+                shut_down_status = true;
                 uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
                 continue;
             }
@@ -715,6 +718,10 @@ void app_main()
         }
 
         /* 没有要break/continue的 */
+        if(shut_down_status) {
+            printf("shut down status, send shut down req\n");
+            uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
+        }
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     /* exceed max uptime, timeout */
@@ -727,7 +734,10 @@ void app_main()
     /*----------write log-----------*/
     sdcard_log_write();
     printf("=-> timed out, send shutdown request\n");
-    uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
+    for(;;) {
+        uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
 
 #if  0
     /*
