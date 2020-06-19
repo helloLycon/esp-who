@@ -364,7 +364,7 @@ int enter_ble_config_mode(void) {
         xSemaphoreGive(g_update_over);
     }
     vTaskDelete(get_camera_data_task_handle);
-    vTaskDelete(save_video_into_sdcard_task_handle);
+    //vTaskDelete(save_video_into_sdcard_task_handle);
     vTaskDelete(send_queue_pic_task_handle);
     /* stop wifi */
     esp_err_t err = esp_wifi_stop();
