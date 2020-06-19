@@ -49,6 +49,7 @@ void pic_in_queue(video_queue *video, int len, unsigned char *buf);
 void pic_out_queue(video_queue *video);
 void mv_video2sdcard(video_queue *v) ;
 void drop_video(video_queue *v)  ;
+void dump_vq(void);
 
 extern video_queue  *vq_head ;
 extern video_queue  *vq_tail ;

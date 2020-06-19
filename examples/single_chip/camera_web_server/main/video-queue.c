@@ -31,6 +31,19 @@ const char *tag = "video-queue";
 video_queue  *vq_head = NULL;
 video_queue  *vq_tail = NULL;
 
+void dump_video(const video_queue *v) {
+    printf("~~~~~~~~~~~~~~~Video-%p = ", v);
+    for(const pic_queue *pic = v->head_pic; pic; pic=pic->next) {
+        printf("%02x ", (uint8_t)pic);
+    }
+    printf("\n");
+}
+
+void dump_vq(void) {
+    for(const video_queue *v = vq_head; v; v=v->next) {
+        dump_video(v);
+    }
+}
 
 video_queue *new_video(void) {
     printf("+++ (%s)\n", __func__);
@@ -92,10 +105,66 @@ void drop_tail_video(void) {
  */
 void mv_video2sdcard(video_queue *v) {
     printf("+++ (%s)\n", __func__);
+    //dump_vq();
     /* 已经在sdcard */
     if(v->is_in_sdcard)  {
         return;
     }
+#if   1
+    pic_queue tmp_pic;
+    pic_queue **ptr_prev_pic_s_next = NULL;
+    for(pic_queue *pic = v->head_pic; pic; pic = pic->next) {
+        bool is_head = false, is_tail = false;
+        bool reassign_upload = false;
+        bool reassign_save = false;
+
+        memcpy(&tmp_pic, pic, sizeof(pic_queue));
+        /*-------------------------start---------------------------*/
+        /* 是否需要更新head和tail指针 */
+        if(v->head_pic == pic) {
+           is_head = true;
+        }
+        if(v->tail_pic == pic) {
+           is_tail = true;
+        }
+        /* 因为realloc了pic_pointer，两个任务的指针要交接 */
+        if(pic == upload_pic_pointer) {
+           reassign_upload = true;
+        }
+        if(pic == save_pic_pointer) {
+           reassign_save = true;
+        }
+        /*-------------------------end---------------------------*/
+
+        pic = realloc(pic, sizeof(pic_queue));
+        if(NULL == pic) {
+           ESP_LOGE(tag, "realloc failed in %s, delete task", __func__);
+           vTaskDelete(NULL);
+        }
+        memcpy(pic, &tmp_pic, sizeof(pic_queue));
+        if(ptr_prev_pic_s_next) {
+           *ptr_prev_pic_s_next = pic;
+        }
+        ptr_prev_pic_s_next = &pic->next;
+
+        /*-------------------------start---------------------------*/
+        /* 重新赋值头尾指针 */
+        if(is_head) {
+           v->head_pic = pic;
+        }
+        if(is_tail) {
+           v->tail_pic = pic;
+        }
+        /* 因为realloc了pic_pointer，两个任务的指针要交接 */
+        if(reassign_upload) {
+           upload_pic_pointer = pic;
+        }
+        if(reassign_save) {
+           save_pic_pointer = pic;
+        }
+        /*-------------------------end---------------------------*/
+    }
+#else
     /* 视频只存在sdcard里 */
     pic_queue tmp_pic;
     pic_queue **ptrptr_pic = &v->head_pic;
@@ -157,6 +226,8 @@ void mv_video2sdcard(video_queue *v) {
          //offset += (PIC_DATA_OFFSET + tmp_pic->pic_len);
          *ptrptr_pic = (*ptrptr_pic)->next;
     }
+#endif
+    //dump_vq();
     log_printf("视频保存结束");
     printf("+++ 一个视频保存结束\n");
     v->is_in_sdcard = true;

@@ -693,7 +693,7 @@ void app_main()
         /* 没有任务一段时间 */
         lock_vq();
         void *vq = vq_head;
-        //printf("vq_head = %p\n", vq);
+        //dump_vq();
         unlock_vq();
         if(NULL == vq) {
             no_video_cnter++;
