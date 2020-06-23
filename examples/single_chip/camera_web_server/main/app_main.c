@@ -435,6 +435,13 @@ int cam_edge_handler(bool rising) {
     return 0;
 }
 
+int cmd_cmp(const char *src, const char *cmd, int *plen) {
+    int str_len = strlen(cmd);
+    int ret = strncmp(src, cmd, str_len);
+    *plen = (ret?0:str_len);
+    return ret;
+}
+
 static void echo_task(void *arg)
 {
     extern unsigned char is_connect;
@@ -452,118 +459,155 @@ static void echo_task(void *arg)
     uart_driver_install(ECHO_UART_NUM, BUF_SIZE * 2, 0, 0, NULL, 0);
 
     // Configure a temporary buffer for the incoming data
-    char *data = (char *) malloc(BUF_SIZE);
+    char *uartbuf = (char *) malloc(BUF_SIZE);
 
     uart_write_bytes(ECHO_UART_NUM, GET_STATUS, strlen(GET_STATUS)+1);
 
+    int tot_len = 0;
     while (false == g_update_mcu)
     {
+        char tmp[BUF_SIZE];
         // Read data from the UART
-        int len = uart_read_bytes(ECHO_UART_NUM, (uint8_t *)data, BUF_SIZE, 20 / portTICK_RATE_MS);
+        int len = uart_read_bytes(ECHO_UART_NUM, (uint8_t *)uartbuf+tot_len, BUF_SIZE, 20 / portTICK_RATE_MS);
 
         cam_status_handler();
 
         //printf("%d\n", xTaskGetTickCount());
-        if((len <= 0) || (data[0] != '~')) {
+        if(len <= 0) {
             continue;
         }
-        //printf("len = %d\n", len);
-        data[len] = '\0';
-        if( !strncmp(data, CORE_SHUT_DOWN, strlen(CORE_SHUT_DOWN)) ) {
-            sdcard_log_write();
-            printf("=> core shut down recvd, call esp_deep_sleep_start()\n");
-            uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_OK, strlen(CORE_SHUT_DOWN_OK)+1);
-            /* 进入深度休眠 */
-            esp_deep_sleep_start();
-        }
-        else if( !strncmp(data, IR_WKUP_PIN_FALLING, strlen(IR_WKUP_PIN_FALLING)) ) {
-            /*
-            // 上次是下降沿的话不用更新
-            if( 0 == fallingTickCount) {
-                fallingTickCount = xTaskGetTickCount();
-            }*/
-            printf("[%d] ↓\n", xTaskGetTickCount());
-            cam_edge_handler(0);
-        }
-        else if( !strncmp(data, IR_WKUP_PIN_RISING, strlen(IR_WKUP_PIN_RISING)) ) {
-            //fallingTickCount = 0;
-            printf("[%d] ↑\n", xTaskGetTickCount());
-            cam_edge_handler(1);
-        }
-#if  1    /* 模拟多次触发 */
-        else if( !strncmp(data, KEY_WKUP_PIN_RISING, strlen(KEY_WKUP_PIN_RISING)) ) {
-            cam_edge_handler(1);
-            cam_edge_handler(1);
-        }
-#endif
-        else if(!strncmp(data, REC_STATUS, strlen(REC_STATUS))) {
-            /* key/ir */
-            if( 'k' == data[strlen(REC_STATUS)] ) {
-                /* key */
-                printf("STATUS: key, enter BT-CONFIGURATION mode...\n");
-                enter_ble_config_mode();
-            } else {
-                printf("STATUS: ir\n");
+
+        /* 收到数据 */
+        tot_len += len;
+        uartbuf[tot_len] = '\0';
+        while(true) {
+            char *command = strchr(uartbuf, '~');
+            if(NULL == command) {
+                break;
+            }
+            /* 存在hdr */
+            if(command != uartbuf) {
+                strcpy(tmp, command);
+                strcpy(uartbuf, tmp);
+                tot_len = strlen(uartbuf);
+                command = uartbuf;
             }
 
-            /* current high,low */
-            if( 'h' == strchr(data, ',')[1] ) {
-                printf("STATUS: ir-high\n");
-            } else {
-                printf("STATUS: ir-low\n");
-                /* 上次是下降沿的话不用更新 */
-                if( 0 == cam_ctrl.last_falling) {
-                    cam_ctrl.last_falling = xTaskGetTickCount();
-                }
-                printf("=> ir low level(act as falling edge)\n");
+            int cmd_len = 0;
+            if( !cmd_cmp(command, CORE_SHUT_DOWN, &cmd_len) ) {
+                sdcard_log_write();
+                printf("=> core shut down recvd, call esp_deep_sleep_start()\n");
+                uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_OK, strlen(CORE_SHUT_DOWN_OK)+1);
+                /* 进入深度休眠 */
+                esp_deep_sleep_start();
             }
-            /* initial high,low */
-            if( 'h' == strchr(strchr(data, ',')+1, ',')[1] ) {
-                printf("STATUS: ir-init-high\n");
-            } else {
-                printf("STATUS: ir-init-low\n");
-#if  0
-                /* 上次是下降沿的话不用更新 */
+            else if( !cmd_cmp(command, IR_WKUP_PIN_FALLING, &cmd_len) ) {
+                /*
+                // 上次是下降沿的话不用更新
                 if( 0 == fallingTickCount) {
                     fallingTickCount = xTaskGetTickCount();
-                }
-                printf("=> ir low level(act as falling edge)\n");
+                }*/
+                printf("[%d] ↓\n", xTaskGetTickCount());
+                cam_edge_handler(0);
+            }
+            else if( !cmd_cmp(command, IR_WKUP_PIN_RISING, &cmd_len) ) {
+                //fallingTickCount = 0;
+                printf("[%d] ↑\n", xTaskGetTickCount());
+                cam_edge_handler(1);
+            }
+#if  1    /* 模拟多次触发 */
+            else if( !cmd_cmp(command, KEY_WKUP_PIN_RISING, &cmd_len) ) {
+                cam_edge_handler(1);
+                cam_edge_handler(1);
+            }
 #endif
+            else if(!cmd_cmp(command, REC_STATUS, &cmd_len)) {
+                /* key/ir */
+                if( 'k' == command[strlen(REC_STATUS)] ) {
+                    /* key */
+                    printf("STATUS: key, enter BT-CONFIGURATION mode...\n");
+                    enter_ble_config_mode();
+                } else {
+                    printf("STATUS: ir\n");
+                }
+
+                /* current high,low */
+                if( 'h' == strchr(command, ',')[1] ) {
+                    printf("STATUS: ir-high\n");
+                } else {
+                    printf("STATUS: ir-low\n");
+                    /* 上次是下降沿的话不用更新 */
+                    if( 0 == cam_ctrl.last_falling) {
+                        cam_ctrl.last_falling = xTaskGetTickCount();
+                    }
+                    printf("=> ir low level(act as falling edge)\n");
+                }
+                /* initial high,low */
+                if( 'h' == strchr(strchr(command, ',')+1, ',')[1] ) {
+                    printf("STATUS: ir-init-high\n");
+                } else {
+                    printf("STATUS: ir-init-low\n");
+#if  0
+                    /* 上次是下降沿的话不用更新 */
+                    if( 0 == fallingTickCount) {
+                        fallingTickCount = xTaskGetTickCount();
+                    }
+                    printf("=> ir low level(act as falling edge)\n");
+#endif
+                }
+                if('w' == strrchr(command, ',')[1]) {
+                    printf("STATUS: wuf set\n");
+                    wake_up_flag = true;
+                } else {
+                    printf("STATUS: wuf unset\n");
+                    wake_up_flag = false;
+                }
+
+                /* adc(battery percent) routine */
+
+                /* mutex protected */
+                xSemaphoreTake(g_data_mutex, portMAX_DELAY);
+                fix_battery_percent(&vPercent, &g_init_data.config_data.last_btry_percent);
+                printf("=-> vPercent = %d%%\n", vPercent);
+                if(g_init_data.config_data.last_btry_percent != vPercent) {
+                    g_init_data.config_data.last_btry_percent = vPercent;
+                    store_init_data();
+                }
+                xSemaphoreGive(g_data_mutex);
+                if(0 == vPercent) {
+                    /* 防止电池过放，低压关机 */
+                    log_enum(LOG_LOW_BATTERY);
+                    printf("=-> low battery, send shutdown request\n");
+                    sdcard_log_write();
+                    shut_down_status = true;
+                    uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
+                    break;
+                }
+                xSemaphoreGive(vpercent_ready);
             }
-            if('w' == strrchr(data, ',')[1]) {
-                printf("STATUS: wuf set\n");
-                wake_up_flag = true;
-            } else {
-                printf("STATUS: wuf unset\n");
-                wake_up_flag = false;
+            else if(!cmd_cmp(command, CAMERA_POWER_DOWN_OK, &cmd_len)) {
+                extern bool g_camera_power;
+                g_camera_power = false;
+                printf("camera power down OKAY\n");
             }
 
-            /* adc(battery percent) routine */
-
-            /* mutex protected */
-            xSemaphoreTake(g_data_mutex, portMAX_DELAY);
-            fix_battery_percent(&vPercent, &g_init_data.config_data.last_btry_percent);
-            printf("=-> vPercent = %d%%\n", vPercent);
-            if(g_init_data.config_data.last_btry_percent != vPercent) {
-                g_init_data.config_data.last_btry_percent = vPercent;
-                store_init_data();
-            }
-            xSemaphoreGive(g_data_mutex);
-            if(0 == vPercent) {
-                /* 防止电池过放，低压关机 */
-                log_enum(LOG_LOW_BATTERY);
-                printf("=-> low battery, send shutdown request\n");
-                sdcard_log_write();
-                shut_down_status = true;
-                uart_write_bytes(ECHO_UART_NUM, CORE_SHUT_DOWN_REQ, strlen(CORE_SHUT_DOWN_REQ)+1);
+            /* 查看是否匹配命令 */
+            if(cmd_len) {
+                strcpy(tmp, command + cmd_len);
+                strcpy(uartbuf, tmp);
+                tot_len = strlen(uartbuf);
                 continue;
+            } else {
+                char *search_next_til = strchr(command + 1, '~');
+                if(search_next_til) {
+                    strcpy(tmp, search_next_til);
+                    strcpy(uartbuf, tmp);
+                    tot_len = strlen(uartbuf);
+                } else {
+                    break;
+                }
             }
-            xSemaphoreGive(vpercent_ready);
-        }
-        else if(!strncmp(data, CAMERA_POWER_DOWN_OK, strlen(CAMERA_POWER_DOWN_OK))) {
-            extern bool g_camera_power;
-            g_camera_power = false;
-            printf("camera power down OKAY\n");
+
         }
     }
 
