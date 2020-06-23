@@ -58,7 +58,7 @@
 #define MAX_CAMERA_VIDEO_TIME_SECS     10
 
 /* 多次触发时上升沿时间间隔需要在这个时间内 */
-#define MIN_INTERVAL_OF_MULTI_CAPTURE_TICKS  (1000/*ms*//portTICK_PERIOD_MS)
+#define MIN_INTERVAL_OF_MULTI_CAPTURE_TICKS  (1500/*ms*//portTICK_PERIOD_MS)
 
 /* 第一个视频需要的第三个上升沿，要在t1时间内来到，否则丢弃视频 */
 #define MAX_RISING_EDGE_TIME_OF_FIRST_VALID_VIDEO_TICKS  (3000/*ms*//portTICK_PERIOD_MS) 
