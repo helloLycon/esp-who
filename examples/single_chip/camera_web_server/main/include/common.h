@@ -9,7 +9,7 @@
 #define DEVICE_ID_FLAG      "device_id"
 #define SERVICE_IP_FLAG     "service_ip"
 #define SERVICE_PORT_FLAG   "service_port"
-#define TCP_SERVER_ADRESS   "10.10.1.238"     //作为client，要连接TCP服务器地址
+#define TCP_SERVER_ADRESS   "122.228.236.250"     //作为client，要连接TCP服务器地址
 #define DEVICE_INFO         "123456"
 #define CAMERA_OVER         "airbat\tover\r\n"
 #define CAMERA_STOP         "airbat\tpass\r\n"
